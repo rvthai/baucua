@@ -5,7 +5,16 @@ const io = require('socket.io')(http);
 const port = 9000;
 
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    console.log(socket.id + ' has just connected');
+
+    socket.on('join', (name, room) => {
+        console.log(name + ' has join room ' + room);
+    })
+
+    socket.on('disconnect', () => {
+        console.log('User had left');
+    })
+
 });
 
 app.get('/', (req, res) => res.send('Hello World!'));
