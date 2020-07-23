@@ -51,6 +51,7 @@ const findRoom = (room) => rooms.filter((r) => r.roomId === room);
 const getRoom = ({room}) =>{
   const index = rooms.findIndex((rm) => rm.roomId === room);
   if (index !== -1){
+    rooms[index].active = true;
     return rooms[index];
   }
   return {error: 'Room does not exist'};
@@ -104,7 +105,7 @@ const calculateProfit = (room) =>{
       if (bet.length > 0){
           for (let win = 0; win < bet.length; ++win){
               const player = gameroom.players.find((p) => p.id === bet[0].id);
-              player.total += bet[0].amount*2*gameroom.dice[die].val;
+              player.total += bet[0].amount*gameroom.dice[die].val+bet[0].amount;
           }
       }
   }

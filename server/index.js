@@ -28,6 +28,12 @@ io.on('connection', (socket) => {
             
             callback();
         }
+        if (findRoom(room)[0].active){
+            const gamestate = getRoom({room})
+            io.to(room).emit("gamestart", ({gamestate}));
+            io.to(room).emit("gamestate", ({gamestate}));
+        }
+
     })
 
     //SOCKET GAME LOGIC
@@ -59,7 +65,7 @@ io.on('connection', (socket) => {
         }
     })
     socket.on('disconnect', () => {
-        console.log('User had left');
+        console.log(socket.id + ' had left');
     })
 
 });
