@@ -2,8 +2,8 @@ const app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-const {createRoom, joinRoom, getUserInRoom, removeUser, findRoom} = require('./room');
-const {createGameRoom, addBet, rollDice} = require('./game');
+const {createRoom, joinRoom, getUserInRoom, removeUser, findRoom, getRoom, addBet, rollDice} = require('./room');
+
 const port = 9000;
 
 io.on('connection', (socket) => {
@@ -31,8 +31,8 @@ io.on('connection', (socket) => {
     })
 
     //SOCKET GAME LOGIC
-    socket.on("startgame", ({room, players}) => {
-        const gamestate = createGameRoom({room, players})
+    socket.on("startgame", ({room}) => {
+        const gamestate = getRoom({room})
         io.to(room).emit("gamestart", ({gamestate}));
     })
 
