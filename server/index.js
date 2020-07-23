@@ -3,12 +3,13 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
 const {createRoom, joinRoom, getUserInRoom, removeUser, findRoom} = require('./room');
-
+const {createGameRoom, addBet, rollDice} = require('./game');
 const port = 9000;
 
 io.on('connection', (socket) => {
     console.log(socket.id + ' has just connected');
-
+    
+    //SOCKET JOIN
     socket.on('join', ({name, room, host}, callback) => {
         if (host){
             const {user,error} = createRoom({id:socket.id, name, room});
@@ -29,11 +30,23 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on("startgame", ({room}) => {
-        io.to(room).emit("gamestart");
+    //SOCKET GAME LOGIC
+    socket.on("startgame", ({room, players}) => {
+        const gamestate = createGameRoom({room, players})
+        io.to(room).emit("gamestart", ({gamestate}));
     })
 
+    socket.on('roll', ({room}) => {
+        const gamestate = rollDice({room});
+        io.to(room).emit("gamestate", ({gamestate}));
+    })
 
+    socket.on("bet", ({room, id, amount, animal}) => {
+        const gamestate = addBet({room, id, amount, animal});
+        io.to(room).emit("gamestate", ({gamestate}));
+    })
+
+    //SOCKET LEAVE
     socket.on("leaveroom", ({id, room})=>{
         const user = removeUser({id, room});
         if (user){
@@ -45,7 +58,6 @@ io.on('connection', (socket) => {
             }
         }
     })
-
     socket.on('disconnect', () => {
         console.log('User had left');
     })
