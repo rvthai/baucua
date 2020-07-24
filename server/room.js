@@ -35,9 +35,9 @@ const getUserInRoom = (room) => {
 
 const removeUser = ({id, room}) => {
   const index = rooms.findIndex((rm) => rm.roomId === room);
-  const playerList = rooms[index].players;
-  const playerIndex = playerList.findIndex((user) => user.id === id)
   if (index !== -1){
+    const playerList = rooms[index].players;
+    const playerIndex = playerList.findIndex((user) => user.id === id)
     const user = playerList.splice(playerIndex, 1)[0];
     if (rooms[index].players.length === 0){
       rooms.splice(index,1);
@@ -62,10 +62,15 @@ const addBet = ({room, id, amount, animal}) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   const player = gameroom.players.find((pl) => pl.id === id);
   if (gameroom && player){
-      const bet = {id:id, animal:animal, amount:amount};
+      const playerbet = gameroom.bets.find((pb) => pb.id === id && pb.animal === animal);
+      if (playerbet){
+        playerbet.amount += amount;
+      }else{
+        const bet = {id:id, animal:animal, amount:amount};
+        gameroom.bets.push(bet);
+      }
       player.total -= amount;
       player.current += amount;
-      gameroom.bets.push(bet);
   }
   return gameroom;
 }
@@ -109,11 +114,13 @@ const calculateProfit = (room) =>{
           }
       }
   }
+  let hostTotal = 0;
   for (let p = 0; p < gameroom.players.length; ++p){
-      const difference = gameroom.players[p].current - gameroom.players[p].total;
+      hostTotal += (gameroom.players[p].total < 0 ? gameroom.players[p].total : -gameroom.players[p].total);
       //host.total += difference
       gameroom.players[p].current = 0;
   }
+  gameroom.players[0].total = hostTotal;
   gameroom.bets = [];
   return gameroom;
 }
