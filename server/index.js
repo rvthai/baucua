@@ -56,6 +56,7 @@ io.on('connection', (socket) => {
     socket.on('roll', ({room}) => {
         const gamestate = rollDice({room});
         io.to(room).emit("gamestate", ({gamestate}));
+        io.to(room).emit("roll");
     })
 
     socket.on("bet", ({room, id, amount, animal}) => {

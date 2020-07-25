@@ -60,19 +60,21 @@ const getRoom = ({room}) =>{
 //GAME FUNCTIONS
 const addBet = ({room, id, amount, animal}) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  const player = gameroom.players.find((pl) => pl.id === id);
-  if (gameroom && player){
-      const playerbet = gameroom.bets.find((pb) => pb.id === id && pb.animal === animal);
-      if (playerbet){
-        playerbet.amount += amount;
-      }else{
-        const bet = {id:id, animal:animal, amount:amount};
-        gameroom.bets.push(bet);
-      }
-      player.total -= amount;
-      player.current += amount;
+  if (gameroom){
+    const player = gameroom.players.find((pl) => pl.id === id);
+    if (gameroom && player){
+        const playerbet = gameroom.bets.find((pb) => pb.id === id && pb.animal === animal);
+        if (playerbet){
+          playerbet.amount += amount;
+        }else{
+          const bet = {id:id, animal:animal, amount:amount};
+          gameroom.bets.push(bet);
+        }
+        player.total -= amount;
+        player.current += amount;
+    }
+    return gameroom;
   }
-  return gameroom;
 }
 
 const rollDice = ({room}) => {
