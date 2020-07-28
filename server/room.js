@@ -66,8 +66,10 @@ const addBet = ({room, id, amount, animal}) => {
         const playerbet = gameroom.bets.find((pb) => pb.id === id && pb.animal === animal);
         if (playerbet){
           playerbet.amount += amount;
+          gameroom.players[0].total += amount;
         }else{
           const bet = {id:id, animal:animal, amount:amount};
+          gameroom.players[0].total += amount;
           gameroom.bets.push(bet);
         }
         player.total -= amount;
@@ -113,16 +115,13 @@ const calculateProfit = (room) =>{
           for (let win = 0; win < bet.length; ++win){
               const player = gameroom.players.find((p) => p.id === bet[0].id);
               player.total += bet[0].amount*gameroom.dice[die].val+bet[0].amount;
+              gameroom.players[0].total -= bet[0].amount*gameroom.dice[die].val;
           }
       }
   }
-  let hostTotal = 0;
   for (let p = 0; p < gameroom.players.length; ++p){
-      hostTotal += (gameroom.players[p].total < 0 ? gameroom.players[p].total : -gameroom.players[p].total);
-      //host.total += difference
       gameroom.players[p].current = 0;
   }
-  gameroom.players[0].total = hostTotal;
   gameroom.bets = [];
   return gameroom;
 }
