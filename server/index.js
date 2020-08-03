@@ -13,6 +13,7 @@ const {
   findRoom,
   getRoom,
   addBet,
+  setReady,
   rollDice,
   addMessage,
   getChatroom,
@@ -61,17 +62,20 @@ io.on("connection", (socket) => {
   });
 
   socket.on("readyplayer", ({ gamestate }) => {
+    console.log(gamestate.roomId);
+    console.log(socket.id);
+    const readyPlayer = setReady({room: gamestate.roomId, id:socket.id});
     let r = true;
-    gamestate.players.forEach(function (user) {
-      if (!user.ready) {
+    for (let i = 0; i < readyPlayer.players.length; i++){
+      if (readyPlayer.players[i].ready === false){
         r = false;
       }
-    });
+    }
     if (r) {
-      const state = rollDice({ room: gamestate.roomId });
-      io.to(gamestate.roomId).emit("newgamestate", { gamestate: state });
+      const state = rollDice({ room: readyPlayer.roomId });
+      io.to(readyPlayer.roomId).emit("newgamestate", { gamestate: state });
     } else {
-      io.to(gamestate.roomId).emit("gamestate", { gamestate });
+      io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
   });
 

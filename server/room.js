@@ -104,6 +104,18 @@ const addBet = ({ room, id, amount, animal }) => {
   }
 };
 
+const setReady = ( {room, id}) => {
+  const gameroom = rooms.find((rm) => rm.roomId === room);
+  if (gameroom){
+    const player = gameroom.players.find((user) => user.id === id);
+    if (player){
+      player.ready = true;
+      console.log(gameroom);
+      return gameroom;
+    }
+  }
+}
+
 const rollDice = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   const animals = ["deer", "bau", "chicken", "fish", "crab", "shrimp"];
@@ -171,6 +183,7 @@ module.exports = {
   findRoom,
   getRoom,
   addBet,
+  setReady,
   rollDice,
   addMessage,
   getChatroom,
