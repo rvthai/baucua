@@ -1,7 +1,7 @@
 const rooms = [];
 const chatrooms = [];
 
-const createRoom = ({ id, name, room }) => {
+const createRoom = ({ id, room }) => {
   var colors = [
     "#c04e48", //red
     "#4a7eac", //blue
@@ -25,22 +25,20 @@ const createRoom = ({ id, name, room }) => {
     roomId: room,
     message: [],
   };
-  // const color = r.colors.shift();
-  // const user = { id, name, room, total: 0, current: 0, color };
+
   const index = rooms.findIndex((rm) => rm.roomId === room);
   if (index !== -1) {
     return { error: "Room already exist" };
   }
-  // r.players.push(user);
+
   rooms.push(r);
   chatrooms.push(c);
-  // return { user };
 };
 
 const joinRoom = ({ id, name, room }) => {
   const index = rooms.findIndex((r) => r.roomId === room);
   const color = rooms[index].colors.shift();
-  const user = { id, name, room, total: 0, current: 0, color, ready:false};
+  const user = { id, name, room, total: 0, current: 0, color, ready: false };
   if (index === -1) {
     return { error: "Room does not exist" };
   }
@@ -57,20 +55,21 @@ const getUserInRoom = (room) => {
   return roomList[0].players;
 };
 
-const removeUser = ({id, room}) => {
+const removeUser = ({ id, room }) => {
   const index = rooms.findIndex((rm) => rm.roomId === room);
   const chatIndex = chatrooms.findIndex((cr) => cr.roomId === room);
-  if (index !== -1){
+  if (index !== -1) {
     const playerList = rooms[index].players;
-    const playerIndex = playerList.findIndex((user) => user.id === id)
+    const playerIndex = playerList.findIndex((user) => user.id === id);
     const user = playerList.splice(playerIndex, 1)[0];
-    if (rooms[index].players.length === 0){
-      rooms.splice(index,1);
-      chatrooms.splice(chatIndex,1);
+    rooms[index].colors.unshift(user.color);
+    if (rooms[index].players.length === 0) {
+      rooms.splice(index, 1);
+      chatrooms.splice(chatIndex, 1);
     }
     return user;
   }
-}
+};
 
 const findRoom = (room) => rooms.filter((r) => r.roomId === room);
 
@@ -105,54 +104,56 @@ const addBet = ({ room, id, amount, animal }) => {
   }
 };
 
-const rollDice = ({room}) => {
+const rollDice = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  const animals = ["deer","bau","chicken","fish","crab","shrimp"];
-  let a = animals.length, k, temp;
-  while(--a > 0){
-      k = Math.floor(Math.random()*(a+1));
-      temp = animals[k];
-      animals[k] = animals[a];
-      animals[a] = temp;
+  const animals = ["deer", "bau", "chicken", "fish", "crab", "shrimp"];
+  let a = animals.length,
+    k,
+    temp;
+  while (--a > 0) {
+    k = Math.floor(Math.random() * (a + 1));
+    temp = animals[k];
+    animals[k] = animals[a];
+    animals[a] = temp;
   }
   const dice = [];
   let die;
-  for (die = 0; die < 3; die++){
-      const index = Math.floor(Math.random()*6);
-      const d = animals[index];
-      dice.push(d);
+  for (die = 0; die < 3; die++) {
+    const index = Math.floor(Math.random() * 6);
+    const d = animals[index];
+    dice.push(d);
   }
   gameroom.dice = dice;
   return calculateProfit(room);
-}
+};
 
-const calculateProfit = (room) =>{
+const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  for (let die = 0; die < gameroom.dice.length; ++die){
-      const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
-      if (bet.length > 0){
-          for (let win = 0; win < bet.length; ++win){
-              const player = gameroom.players.find((p) => p.id === bet[0].id);
-              player.total += bet[0].amount*2;
-          }
+  for (let die = 0; die < gameroom.dice.length; ++die) {
+    const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
+    if (bet.length > 0) {
+      for (let win = 0; win < bet.length; ++win) {
+        const player = gameroom.players.find((p) => p.id === bet[0].id);
+        player.total += bet[0].amount * 2;
       }
+    }
   }
-  for (let p = 0; p < gameroom.players.length; ++p){
-      gameroom.players[p].current = 0;
-      gameroom.players[p].ready = false;
+  for (let p = 0; p < gameroom.players.length; ++p) {
+    gameroom.players[p].current = 0;
+    gameroom.players[p].ready = false;
   }
   gameroom.bets = [];
   return gameroom;
-}
+};
 
-const addMessage = ({room, name, message}) => {
+const addMessage = ({ room, name, message }) => {
   const index = chatrooms.findIndex((c) => c.roomId === room);
-  if (index !== -1){
-    const messageObject = {name:name, message:message};
+  if (index !== -1) {
+    const messageObject = { name: name, message: message };
     chatrooms[index].message.push(messageObject);
     return chatrooms[index];
   }
-}
+};
 
 const getChatroom = ({ room }) => {
   const index = chatrooms.findIndex((rm) => rm.roomId === room);

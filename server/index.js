@@ -29,7 +29,7 @@ io.on("connection", (socket) => {
 
     // Create room if newRoom is true
     if (newRoom) {
-      const error = createRoom({ id: socket.id, name, room });
+      const error = createRoom({ id: socket.id, room });
       if (error) return callback(error);
       callback();
     }
@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
 
     if (r[0].active) {
       const gamestate = getRoom({ room });
-      const chat = getChatroom({ room })
+      const chat = getChatroom({ room });
       io.to(room).emit("gamestart", { gamestate });
       io.to(room).emit("gamestate", { gamestate });
       io.to(room).emit("chatbox", { chat });
@@ -60,20 +60,20 @@ io.on("connection", (socket) => {
     io.to(room).emit("gamestart", { gamestate });
   });
 
-  socket.on("readyplayer", ({gamestate}) => {
+  socket.on("readyplayer", ({ gamestate }) => {
     let r = true;
-    gamestate.players.forEach(function(user){
-      if (!user.ready){
+    gamestate.players.forEach(function (user) {
+      if (!user.ready) {
         r = false;
       }
-    })
-    if (r){
-      const state = rollDice({room: gamestate.roomId});
-      io.to(gamestate.roomId).emit("newgamestate", ({gamestate:state}));
-    }else{
-      io.to(gamestate.roomId).emit("gamestate", ({gamestate}));
+    });
+    if (r) {
+      const state = rollDice({ room: gamestate.roomId });
+      io.to(gamestate.roomId).emit("newgamestate", { gamestate: state });
+    } else {
+      io.to(gamestate.roomId).emit("gamestate", { gamestate });
     }
-  })
+  });
 
   socket.on("bet", ({ room, id, amount, animal }) => {
     const gamestate = addBet({ room, id, amount, animal });
@@ -81,10 +81,10 @@ io.on("connection", (socket) => {
   });
 
   //SOCKET CHAT
-  socket.on("sendMessage", ({name, message}) => {
-    const chat = addMessage({room:socket.roomname, name, message});
-    io.to(socket.roomname).emit("chatbox", ({chat}));
-  })
+  socket.on("sendMessage", ({ name, message }) => {
+    const chat = addMessage({ room: socket.roomname, name, message });
+    io.to(socket.roomname).emit("chatbox", { chat });
+  });
 
   // Socket disconnects
   socket.on("disconnect", () => {
