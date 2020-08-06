@@ -62,8 +62,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("readyplayer", ({ gamestate }) => {
-    console.log(gamestate.roomId);
-    console.log(socket.id);
     const readyPlayer = setReady({room: gamestate.roomId, id:socket.id});
     let r = true;
     for (let i = 0; i < readyPlayer.players.length; i++){
@@ -89,6 +87,15 @@ io.on("connection", (socket) => {
     const chat = addMessage({ room: socket.roomname, name, message });
     io.to(socket.roomname).emit("chatbox", { chat });
   });
+
+  //SOCKET TIMER
+  socket.on("timer", ({room, timer}) => {
+    if (timer === 0){
+      io.to(room).emit("endtimer");
+    }else{
+      io.to(room).emit("timer", ({second: timer-1}));
+    }
+  })
 
   // Socket disconnects
   socket.on("disconnect", () => {

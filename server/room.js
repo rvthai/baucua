@@ -110,7 +110,6 @@ const setReady = ( {room, id}) => {
     const player = gameroom.players.find((user) => user.id === id);
     if (player){
       player.ready = true;
-      console.log(gameroom);
       return gameroom;
     }
   }
