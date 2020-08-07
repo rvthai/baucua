@@ -57,18 +57,26 @@ const getUserInRoom = (room) => {
 
 const removeUser = ({ id, room }) => {
   const index = rooms.findIndex((rm) => rm.roomId === room);
-  const chatIndex = chatrooms.findIndex((cr) => cr.roomId === room);
-  if (index !== -1) {
-    const playerList = rooms[index].players;
-    const playerIndex = playerList.findIndex((user) => user.id === id);
-    const user = playerList.splice(playerIndex, 1)[0];
-    rooms[index].colors.unshift(user.color);
-    if (rooms[index].players.length === 0) {
-      rooms.splice(index, 1);
-      chatrooms.splice(chatIndex, 1);
-    }
-    return user;
+
+  if (index === -1) {
+    return null;
   }
+
+  const playerList = rooms[index].players;
+  const playerIndex = playerList.findIndex((user) => user.id === id);
+
+  if (playerIndex === -1) {
+    return null;
+  }
+
+  const chatIndex = chatrooms.findIndex((cr) => cr.roomId === room);
+  const user = playerList.splice(playerIndex, 1)[0];
+  rooms[index].colors.unshift(user.color);
+  if (rooms[index].players.length === 0) {
+    rooms.splice(index, 1);
+    chatrooms.splice(chatIndex, 1);
+  }
+  return user;
 };
 
 const findRoom = (room) => rooms.filter((r) => r.roomId === room);
@@ -104,16 +112,16 @@ const addBet = ({ room, id, amount, animal }) => {
   }
 };
 
-const setReady = ( {room, id}) => {
+const setReady = ({ room, id }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  if (gameroom){
+  if (gameroom) {
     const player = gameroom.players.find((user) => user.id === id);
-    if (player){
+    if (player) {
       player.ready = true;
       return gameroom;
     }
   }
-}
+};
 
 const rollDice = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);

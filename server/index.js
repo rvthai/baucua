@@ -24,6 +24,16 @@ const port = 9000;
 io.on("connection", (socket) => {
   console.log(socket.id + " has just connected");
 
+  socket.on("check", (room, callback) => {
+    const r = findRoom(room);
+    if (r.length === 0) {
+      callback(true, "The room you tried to enter does not exist.");
+    } else if (r.length > 0 && r[0].players.length >= 8) {
+      callback(true, "The room you tried to enter is already full.");
+    }
+    callback();
+  });
+
   //SOCKET JOIN
   socket.on("join", ({ name, room, newRoom }, callback) => {
     socket.roomname = room;
@@ -31,17 +41,17 @@ io.on("connection", (socket) => {
     // Create room if newRoom is true
     if (newRoom) {
       const error = createRoom({ id: socket.id, room });
-      if (error) return callback(error);
+      if (error) return callback();
       callback();
     }
 
     // Add socket to specified room
+    const r = findRoom(room);
     const { user, error } = joinRoom({ id: socket.id, name, room });
     if (error) return callback(error);
     socket.join(user.room);
 
     // Emit data back to client
-    const r = findRoom(room);
     io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
     io.to(user.room).emit("roomdata", { room: r[0], id: socket.id });
     callback();
@@ -62,10 +72,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("readyplayer", ({ gamestate }) => {
-    const readyPlayer = setReady({room: gamestate.roomId, id:socket.id});
+    const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
     let r = true;
-    for (let i = 0; i < readyPlayer.players.length; i++){
-      if (readyPlayer.players[i].ready === false){
+    for (let i = 0; i < readyPlayer.players.length; i++) {
+      if (readyPlayer.players[i].ready === false) {
         r = false;
       }
     }
@@ -89,13 +99,13 @@ io.on("connection", (socket) => {
   });
 
   //SOCKET TIMER
-  socket.on("timer", ({room, timer}) => {
-    if (timer === 0){
+  socket.on("timer", ({ room, timer }) => {
+    if (timer === 0) {
       io.to(room).emit("endtimer");
-    }else{
-      io.to(room).emit("timer", ({second: timer-1}));
+    } else {
+      io.to(room).emit("timer", { second: timer - 1 });
     }
-  })
+  });
 
   // Socket disconnects
   socket.on("disconnect", () => {
