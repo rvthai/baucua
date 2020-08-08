@@ -64,6 +64,13 @@ io.on("connection", (socket) => {
       io.to(room).emit("chatbox", { chat });
     }
   });
+  //SOCKET LOBBY SETTINGS
+  socket.on("timerchange", ({timer}) => {
+    io.to(socket.roomname).emit("timeropt", ({timer}));
+  })
+  socket.on("roundchange", ({round}) => {
+    io.to(socket.roomname).emit("roundopt", ({round}));
+  })
 
   //SOCKET GAME LOGIC
   socket.on("startgame", ({ room }) => {

@@ -37,12 +37,12 @@ const createRoom = ({ id, room }) => {
 
 const joinRoom = ({ id, name, room }) => {
   const index = rooms.findIndex((r) => r.roomId === room);
-  const color = rooms[index].colors.shift();
-  const user = { id, name, room, total: 0, current: 0, color, ready: false };
-  if (index === -1) {
+ 
+  if (index === -1 || name === null) {
     return { error: "Room does not exist" };
   }
-
+  const color = rooms[index].colors.shift();
+  const user = { id, name, room, total: 0, current: 0, color, ready: false };
   rooms[index].players.push(user);
   return { user };
 };
