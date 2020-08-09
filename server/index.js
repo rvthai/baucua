@@ -65,12 +65,15 @@ io.on("connection", (socket) => {
     }
   });
   //SOCKET LOBBY SETTINGS
-  socket.on("timerchange", ({timer}) => {
-    io.to(socket.roomname).emit("timeropt", ({timer}));
-  })
-  socket.on("roundchange", ({round}) => {
-    io.to(socket.roomname).emit("roundopt", ({round}));
-  })
+  socket.on("timerchange", ({ timer }) => {
+    io.to(socket.roomname).emit("timeropt", { timer });
+  });
+  socket.on("roundchange", ({ round }) => {
+    io.to(socket.roomname).emit("roundopt", { round });
+  });
+  socket.on("balancechange", ({ balance }) => {
+    io.to(socket.roomname).emit("balanceopt", { balance });
+  });
 
   //SOCKET GAME LOGIC
   socket.on("startgame", ({ room }) => {
