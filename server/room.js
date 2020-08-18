@@ -1,8 +1,13 @@
 const rooms = [];
 const chatrooms = [];
 
+// Creates a new room
 const createRoom = ({ id, room }) => {
-  var colors = [
+  if (roomExists(room)) {
+    return { error: "Room already exists" };
+  }
+
+  const colors = [
     "#c04e48", //red
     "#4a7eac", //blue
     "#d3c56e", //yellow
@@ -12,6 +17,7 @@ const createRoom = ({ id, room }) => {
     "#ca709d", //pink
     "#903c9c", //purple
   ];
+
   const r = {
     roomId: room,
     host: id,
@@ -21,23 +27,21 @@ const createRoom = ({ id, room }) => {
     dice: [],
     colors: colors,
   };
+
   const c = {
     roomId: room,
-    message: [],
+    messages: [],
   };
-
-  const index = rooms.findIndex((rm) => rm.roomId === room);
-  if (index !== -1) {
-    return { error: "Room already exist" };
-  }
 
   rooms.push(r);
   chatrooms.push(c);
+
+  return { r };
 };
 
 const joinRoom = ({ id, name, room }) => {
   const index = rooms.findIndex((r) => r.roomId === room);
- 
+
   if (index === -1 || name === null) {
     return { error: "Room does not exist" };
   }
@@ -80,6 +84,16 @@ const removeUser = ({ id, room }) => {
 };
 
 const findRoom = (room) => rooms.filter((r) => r.roomId === room);
+
+// Check if a room exists
+const roomExists = (room) => {
+  const index = rooms.findIndex((r) => r.roomId === room);
+  if (index === -1) {
+    return false;
+  }
+
+  return true;
+};
 
 const getRoom = ({ room }) => {
   const index = rooms.findIndex((rm) => rm.roomId === room);
@@ -169,7 +183,7 @@ const addMessage = ({ room, name, message }) => {
   const index = chatrooms.findIndex((c) => c.roomId === room);
   if (index !== -1) {
     const messageObject = { name: name, message: message };
-    chatrooms[index].message.push(messageObject);
+    chatrooms[index].messages.push(messageObject);
     return chatrooms[index];
   }
 };

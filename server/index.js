@@ -5,6 +5,7 @@ const io = require("socket.io")(http, {
   pingTimeout: 60000,
 });
 
+// Room.js functions
 const {
   createRoom,
   joinRoom,
@@ -21,9 +22,72 @@ const {
 
 const port = 9000;
 
+// Socket handler
 io.on("connection", (socket) => {
   console.log(socket.id + " has just connected");
 
+  // SOCKET HOST
+  socket.on("host", ({ name, room }, callback) => {
+    socket.roomname = room;
+
+    // Create a new room
+    const { r, err } = createRoom({ id: socket.id, room });
+    if (err) return callback(err);
+    callback();
+
+    // Add socket to the room
+    const { user, error } = joinRoom({ id: socket.id, name, room });
+    if (error) return callback(error);
+    socket.join(user.room);
+    callback();
+
+    // Emit data back to client
+    const rm = findRoom(room);
+    console.log(r);
+    io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
+    io.to(user.room).emit("roomdata", {
+      room: rm[0],
+      roomid: room,
+      id: socket.id,
+    });
+  });
+
+  // SOCKET JOIN
+  socket.on("join", ({ name, room }, callback) => {
+    socket.roomname = room;
+
+    // Add socket to specified room
+    const { user, error } = joinRoom({ id: socket.id, name, room });
+    if (error) return callback(error);
+    // have to do it here to go back to join modal, join modal has no error so it renders lobby component
+    // then from there, there are some sockets listening for players or roomdata, which can catch the emits
+    // later made in this function
+    // without this callback, it will attempt to emit players or roomdata, but no listerners are available since
+    // we are technically still on join modal component, callback will allow us to run the "else" block in our client
+    // the else block redirects or renders the lobby component with these listeners
+
+    socket.join(user.room);
+    callback();
+
+    // Emit data back to client
+    const r = findRoom(room);
+    io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
+    io.to(user.room).emit("roomdata", {
+      room: r[0],
+      roomid: room,
+      id: socket.id,
+    });
+
+    if (r[0].active) {
+      const gamestate = getRoom({ room });
+      const chat = getChatroom({ room });
+      io.to(room).emit("gamestart", { gamestate });
+      io.to(room).emit("gamestate", { gamestate });
+      io.to(room).emit("chatbox", { chat });
+    }
+  });
+
+  // SOCKET ROOM CODE CHECK
   socket.on("check", (room, callback) => {
     const r = findRoom(room);
     if (r.length === 0) {
@@ -34,37 +98,7 @@ io.on("connection", (socket) => {
     callback();
   });
 
-  //SOCKET JOIN
-  socket.on("join", ({ name, room, newRoom }, callback) => {
-    socket.roomname = room;
-
-    // Create room if newRoom is true
-    if (newRoom) {
-      const error = createRoom({ id: socket.id, room });
-      if (error) return callback();
-      callback();
-    }
-
-    // Add socket to specified room
-    const r = findRoom(room);
-    const { user, error } = joinRoom({ id: socket.id, name, room });
-    if (error) return callback(error);
-    socket.join(user.room);
-
-    // Emit data back to client
-    io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
-    io.to(user.room).emit("roomdata", { room: r[0], id: socket.id });
-    callback();
-
-    if (r[0].active) {
-      const gamestate = getRoom({ room });
-      const chat = getChatroom({ room });
-      io.to(room).emit("gamestart", { gamestate });
-      io.to(room).emit("gamestate", { gamestate });
-      io.to(room).emit("chatbox", { chat });
-    }
-  });
-  //SOCKET LOBBY SETTINGS
+  // SOCKET LOBBY SETTINGS
   socket.on("timerchange", ({ timer }) => {
     io.to(socket.roomname).emit("timeropt", { timer });
   });
@@ -75,7 +109,7 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("balanceopt", { balance });
   });
 
-  //SOCKET GAME LOGIC
+  // SOCKET GAME
   socket.on("startgame", ({ room }) => {
     const gamestate = getRoom({ room });
     io.to(room).emit("gamestart", { gamestate });
@@ -102,13 +136,13 @@ io.on("connection", (socket) => {
     io.to(room).emit("gamestate", { gamestate });
   });
 
-  //SOCKET CHAT
+  // SOCKET CHAT
   socket.on("sendMessage", ({ name, message }) => {
     const chat = addMessage({ room: socket.roomname, name, message });
     io.to(socket.roomname).emit("chatbox", { chat });
   });
 
-  //SOCKET TIMER
+  // SOCKET TIMER
   socket.on("timer", ({ room, timer }) => {
     if (timer === 0) {
       io.to(room).emit("endtimer");
@@ -117,11 +151,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Socket disconnects
+  // SOCKET DISCONNECT
   socket.on("disconnect", () => {
     console.log(socket.id + " had left");
-    //anytime for any reason if a socket disconnects the code below will remove that player
-    //from the gameroom
+
     const user = removeUser({ id: socket.id, room: socket.roomname });
     if (user) {
       io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
@@ -141,6 +174,7 @@ io.on("connection", (socket) => {
   });
 });
 
-http.listen(9000, () => {
+// Server listener
+http.listen(port, () => {
   console.log("listening on *:9000");
 });
