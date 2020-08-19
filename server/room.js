@@ -20,6 +20,7 @@ const createRoom = ({ id, room }) => {
     bets: [],
     dice: [],
     colors: colors,
+    round: 1,
   };
   const c = {
     roomId: room,
@@ -123,6 +124,14 @@ const setReady = ({ room, id }) => {
   }
 };
 
+const nextRound = ({room}) => {
+  const gameroom = rooms.find((rm) => rm.roomId === room);
+  if (gameroom){
+    gameroom.round += 1;
+    return gameroom;
+  }
+}
+
 const rollDice = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   const animals = ["deer", "bau", "chicken", "fish", "crab", "shrimp"];
@@ -145,7 +154,7 @@ const rollDice = ({ room }) => {
   gameroom.dice = dice;
   return calculateProfit(room);
 };
-
+//cal for each dice
 const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   for (let die = 0; die < gameroom.dice.length; ++die) {
@@ -191,6 +200,7 @@ module.exports = {
   getRoom,
   addBet,
   setReady,
+  nextRound,
   rollDice,
   addMessage,
   getChatroom,

@@ -14,6 +14,7 @@ const {
   getRoom,
   addBet,
   setReady,
+  nextRound,
   rollDice,
   addMessage,
   getChatroom,
@@ -81,6 +82,21 @@ io.on("connection", (socket) => {
     io.to(room).emit("gamestart", { gamestate });
   });
 
+  //SOCKET START AND END MODAL
+  socket.on("showstartmodal", () => {
+    io.to(socket.roomname).emit("showstartmodal");
+  })
+  socket.on("hidestartmodal", () => {
+    io.to(socket.roomname).emit("hidestart");
+  })
+  socket.on("hideendmodal",({round, maxRound}) => {
+    const gameover = round > maxRound;
+    io.to(socket.roomname).emit("hideend", ({gameover}));
+  })
+  socket.on("showgameover", () => {
+    io.to(socket.roomname).emit("showgameover");
+  })
+  //SOCKET READY/TIMER OVER
   socket.on("readyplayer", ({ gamestate }) => {
     const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
     let r = true;
@@ -89,9 +105,12 @@ io.on("connection", (socket) => {
         r = false;
       }
     }
+    //if all players ready this if statement
     if (r) {
       const state = rollDice({ room: readyPlayer.roomId });
-      io.to(readyPlayer.roomId).emit("newgamestate", { gamestate: state });
+      const gamestate = nextRound({room: socket.roomname});
+      io.to(socket.roomname).emit("newgamestate", { gamestate: state });
+      io.to(socket.roomname).emit("showendmodal", {round: gamestate.round}); 
     } else {
       io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
