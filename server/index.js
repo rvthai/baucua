@@ -60,13 +60,6 @@ io.on("connection", (socket) => {
     // Add socket to specified room
     const { user, error } = joinRoom({ id: socket.id, name, room });
     if (error) return callback(error);
-    // have to do it here to go back to join modal, join modal has no error so it renders lobby component
-    // then from there, there are some sockets listening for players or roomdata, which can catch the emits
-    // later made in this function
-    // without this callback, it will attempt to emit players or roomdata, but no listerners are available since
-    // we are technically still on join modal component, callback will allow us to run the "else" block in our client
-    // the else block redirects or renders the lobby component with these listeners
-
     socket.join(user.room);
     callback();
 
@@ -119,17 +112,17 @@ io.on("connection", (socket) => {
   //SOCKET START AND END MODAL
   socket.on("showstartmodal", () => {
     io.to(socket.roomname).emit("showstartmodal");
-  })
+  });
   socket.on("hidestartmodal", () => {
     io.to(socket.roomname).emit("hidestart");
-  })
-  socket.on("hideendmodal",({round, maxRound}) => {
+  });
+  socket.on("hideendmodal", ({ round, maxRound }) => {
     const gameover = round > maxRound;
-    io.to(socket.roomname).emit("hideend", ({gameover}));
-  })
+    io.to(socket.roomname).emit("hideend", { gameover });
+  });
   socket.on("showgameover", () => {
     io.to(socket.roomname).emit("showgameover");
-  })
+  });
   //SOCKET READY/TIMER OVER
   socket.on("readyplayer", ({ gamestate }) => {
     const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
@@ -142,9 +135,9 @@ io.on("connection", (socket) => {
     //if all players ready this if statement
     if (r) {
       const state = rollDice({ room: readyPlayer.roomId });
-      const gamestate = nextRound({room: socket.roomname});
+      const gamestate = nextRound({ room: socket.roomname });
       io.to(socket.roomname).emit("newgamestate", { gamestate: state });
-      io.to(socket.roomname).emit("showendmodal", {round: gamestate.round}); 
+      io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
     } else {
       io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
