@@ -138,17 +138,19 @@ const setReady = ({ room, id }) => {
   }
 };
 
-const nextRound = ({room}) => {
+const nextRound = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  if (gameroom){
+  if (gameroom) {
     gameroom.round += 1;
     return gameroom;
   }
-}
+};
 
 const rollDice = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
-  const animals = ["deer", "bau", "chicken", "fish", "crab", "shrimp"];
+  const animals = ["deer", "gourd", "rooster", "fish", "crab", "shrimp"];
+
+  // for extra randomness, will randomly resort the array before picking
   let a = animals.length,
     k,
     temp;
@@ -158,6 +160,7 @@ const rollDice = ({ room }) => {
     animals[k] = animals[a];
     animals[a] = temp;
   }
+
   const dice = [];
   let die;
   for (die = 0; die < 3; die++) {
@@ -168,6 +171,7 @@ const rollDice = ({ room }) => {
   gameroom.dice = dice;
   return calculateProfit(room);
 };
+
 //cal for each dice
 const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);

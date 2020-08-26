@@ -123,6 +123,16 @@ io.on("connection", (socket) => {
   socket.on("showgameover", () => {
     io.to(socket.roomname).emit("showgameover");
   });
+
+  // SOCKET TIMER
+  socket.on("timer", ({ room, timer }) => {
+    if (timer === 0) {
+      io.to(room).emit("endtimer");
+    } else {
+      io.to(room).emit("timer", { second: timer - 1 });
+    }
+  });
+
   //SOCKET READY/TIMER OVER
   socket.on("readyplayer", ({ gamestate }) => {
     const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
@@ -133,11 +143,12 @@ io.on("connection", (socket) => {
       }
     }
     //if all players ready this if statement
+    // if all players are ready, the dice roll begins
     if (r) {
       const state = rollDice({ room: readyPlayer.roomId });
       const gamestate = nextRound({ room: socket.roomname });
       io.to(socket.roomname).emit("newgamestate", { gamestate: state });
-      io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
+      //io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
     } else {
       io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
@@ -152,15 +163,6 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", ({ name, message }) => {
     const chat = addMessage({ room: socket.roomname, name, message });
     io.to(socket.roomname).emit("chatbox", { chat });
-  });
-
-  // SOCKET TIMER
-  socket.on("timer", ({ room, timer }) => {
-    if (timer === 0) {
-      io.to(room).emit("endtimer");
-    } else {
-      io.to(room).emit("timer", { second: timer - 1 });
-    }
   });
 
   // SOCKET DISCONNECT
