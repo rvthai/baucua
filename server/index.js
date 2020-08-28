@@ -116,12 +116,12 @@ io.on("connection", (socket) => {
   socket.on("hidestartmodal", () => {
     io.to(socket.roomname).emit("hidestart");
   });
+  socket.on("showgameover", () => {
+    io.to(socket.roomname).emit("showgameover");
+  });
   socket.on("hideendmodal", ({ round, maxRound }) => {
     const gameover = round > maxRound;
     io.to(socket.roomname).emit("hideend", { gameover });
-  });
-  socket.on("showgameover", () => {
-    io.to(socket.roomname).emit("showgameover");
   });
 
   // SOCKET TIMER
@@ -148,7 +148,12 @@ io.on("connection", (socket) => {
       const state = rollDice({ room: readyPlayer.roomId });
       const gamestate = nextRound({ room: socket.roomname });
       io.to(socket.roomname).emit("newgamestate", { gamestate: state });
-      //io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
+      io.to(socket.roomname).emit("diceroll", {
+        dice1: gamestate.dice[0],
+        dice2: gamestate.dice[1],
+        dice3: gamestate.dice[2],
+      });
+      io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
     } else {
       io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
