@@ -14,11 +14,13 @@ const {
   findRoom,
   getRoom,
   addBet,
+  removeBet,
   setReady,
   nextRound,
   rollDice,
   addMessage,
   getChatroom,
+  clearBets,
 } = require("./room");
 
 const port = 9000;
@@ -44,7 +46,6 @@ io.on("connection", (socket) => {
 
     // Emit data back to client
     const rm = findRoom(room);
-    console.log(r);
     io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
     io.to(user.room).emit("roomdata", {
       room: rm[0],
@@ -121,6 +122,8 @@ io.on("connection", (socket) => {
   });
   socket.on("hideendmodal", ({ round, maxRound }) => {
     const gameover = round > maxRound;
+    const state = clearBets(socket.roomname);
+    io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("hideend", { gameover });
   });
 
@@ -159,9 +162,15 @@ io.on("connection", (socket) => {
     }
   });
 
+  // SOCKET BET
   socket.on("bet", ({ room, id, amount, animal }) => {
     const gamestate = addBet({ room, id, amount, animal });
-    io.to(room).emit("gamestate", { gamestate });
+    io.to(room).emit("newgamestate", { gamestate });
+  });
+
+  socket.on("unbet", ({ id, amount, animal }) => {
+    const gamestate = removeBet({ room: socket.roomname, id, amount, animal });
+    io.to(socket.roomname).emit("newgamestate", { gamestate });
   });
 
   // SOCKET CHAT

@@ -109,20 +109,51 @@ const getRoom = ({ room }) => {
 const addBet = ({ room, id, amount, animal }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   if (gameroom) {
-    const player = gameroom.players.find((pl) => pl.id === id);
+    const player = gameroom.players.find((p) => p.id === id);
+
     if (gameroom && player) {
       const playerbet = gameroom.bets.find(
         (pb) => pb.id === id && pb.animal === animal
       );
+
       if (playerbet) {
         playerbet.amount += amount;
       } else {
-        const bet = { id: id, animal: animal, amount: amount };
+        const bet = {
+          id: player.id,
+          animal: animal,
+          amount: amount,
+          color: player.color,
+        };
         gameroom.bets.push(bet);
       }
+
       player.total -= amount;
-      player.current += amount;
     }
+
+    return gameroom;
+  }
+};
+
+const removeBet = ({ room, id, amount, animal }) => {
+  const gameroom = rooms.find((rm) => rm.roomId === room);
+  if (gameroom) {
+    const player = gameroom.players.find((p) => p.id === id);
+
+    if (gameroom && player) {
+      const playerbet = gameroom.bets.find(
+        (pb) => pb.id === id && pb.animal === animal
+      );
+
+      if (playerbet) {
+        const index = gameroom.bets.findIndex(
+          (b) => b.id === id && b.animal === animal
+        );
+        gameroom.bets.splice(index, 1);
+        player.total += amount; // this might be causing problems, need a starting balance
+      }
+    }
+
     return gameroom;
   }
 };
@@ -138,10 +169,20 @@ const setReady = ({ room, id }) => {
   }
 };
 
+const clearBets = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+  if (gameroom) {
+    gameroom.bets = [];
+  }
+
+  return gameroom;
+};
+
 const nextRound = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   if (gameroom) {
     gameroom.round += 1;
+    //gameroom.bets = [];
     return gameroom;
   }
 };
@@ -188,7 +229,7 @@ const calculateProfit = (room) => {
     gameroom.players[p].current = 0;
     gameroom.players[p].ready = false;
   }
-  gameroom.bets = [];
+  //gameroom.bets = [];
   return gameroom;
 };
 
@@ -217,9 +258,11 @@ module.exports = {
   findRoom,
   getRoom,
   addBet,
+  removeBet,
   setReady,
   nextRound,
   rollDice,
   addMessage,
   getChatroom,
+  clearBets,
 };
