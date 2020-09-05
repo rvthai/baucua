@@ -47,7 +47,16 @@ const joinRoom = ({ id, name, room }) => {
     return { error: "Room does not exist" };
   }
   const color = rooms[index].colors.shift();
-  const user = { id, name, room, total: 0, current: 0, color, ready: false };
+  const user = {
+    id,
+    name,
+    room,
+    total: 0,
+    net: 0,
+    rank: 1,
+    color,
+    ready: false,
+  };
   rooms[index].players.push(user);
   return { user };
 };
@@ -129,6 +138,7 @@ const addBet = ({ room, id, amount, animal }) => {
       }
 
       player.total -= amount;
+      player.net -= amount;
     }
 
     return gameroom;
@@ -150,12 +160,27 @@ const removeBet = ({ room, id, amount, animal }) => {
           (b) => b.id === id && b.animal === animal
         );
         gameroom.bets.splice(index, 1);
-        player.total += amount; // this might be causing problems, need a starting balance
+        player.total += amount;
+        player.net += amount;
       }
     }
 
     return gameroom;
   }
+};
+
+const setInitialBalance = ({ room, balance }) => {
+  const index = rooms.findIndex((rm) => rm.roomId === room);
+  if (index !== -1) {
+    rooms[index].active = true;
+
+    for (let i = 0; i < rooms[index].players.length; i++) {
+      rooms[index].players[i].total = balance;
+    }
+
+    return rooms[index];
+  }
+  return { error: "Room does not exist" };
 };
 
 const setReady = ({ room, id }) => {
@@ -178,11 +203,22 @@ const clearBets = (room) => {
   return gameroom;
 };
 
+const clearNets = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+
+  if (gameroom) {
+    for (let i = 0; i < gameroom.players.length; i++) {
+      gameroom.players[i].net = 0;
+    }
+  }
+
+  return gameroom;
+};
+
 const nextRound = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
   if (gameroom) {
     gameroom.round += 1;
-    //gameroom.bets = [];
     return gameroom;
   }
 };
@@ -210,26 +246,49 @@ const rollDice = ({ room }) => {
     dice.push(d);
   }
   gameroom.dice = dice;
-  return calculateProfit(room);
+  return gameroom;
 };
 
 //cal for each dice
 const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
+
   for (let die = 0; die < gameroom.dice.length; ++die) {
     const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
     if (bet.length > 0) {
       for (let win = 0; win < bet.length; ++win) {
         const player = gameroom.players.find((p) => p.id === bet[0].id);
         player.total += bet[0].amount * 2;
+        player.net += bet[0].amount * 2;
       }
     }
   }
+
   for (let p = 0; p < gameroom.players.length; ++p) {
-    gameroom.players[p].current = 0;
     gameroom.players[p].ready = false;
   }
-  //gameroom.bets = [];
+
+  return setRankings(room);
+};
+
+const setRankings = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+
+  const players = gameroom.players;
+
+  players.sort((a, b) => {
+    return b.total - a.total;
+  });
+
+  players[0].rank = 1;
+  for (let i = 1; i < players.length; i++) {
+    if (players[i].total === players[i - 1].total) {
+      players[i].rank = players[i - 1].rank;
+    } else {
+      players[i].rank = players[i - 1].rank + 1;
+    }
+  }
+
   return gameroom;
 };
 
@@ -265,4 +324,7 @@ module.exports = {
   addMessage,
   getChatroom,
   clearBets,
+  setInitialBalance,
+  calculateProfit,
+  clearNets,
 };

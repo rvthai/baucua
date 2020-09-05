@@ -21,6 +21,9 @@ const {
   addMessage,
   getChatroom,
   clearBets,
+  setInitialBalance,
+  calculateProfit,
+  clearNets,
 } = require("./room");
 
 const port = 9000;
@@ -105,13 +108,15 @@ io.on("connection", (socket) => {
   });
 
   // SOCKET GAME
-  socket.on("startgame", ({ room }) => {
-    const gamestate = getRoom({ room });
+  socket.on("startgame", ({ room, balance }) => {
+    const gamestate = setInitialBalance({ room, balance });
     io.to(room).emit("gamestart", { gamestate });
   });
 
   //SOCKET START AND END MODAL
   socket.on("showstartmodal", () => {
+    const state = clearNets(socket.roomname);
+    io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("showstartmodal");
   });
   socket.on("hidestartmodal", () => {
@@ -120,8 +125,10 @@ io.on("connection", (socket) => {
   socket.on("showgameover", () => {
     io.to(socket.roomname).emit("showgameover");
   });
+
   socket.on("hideendmodal", ({ round, maxRound }) => {
     const gameover = round > maxRound;
+    console.log(gameover);
     const state = clearBets(socket.roomname);
     io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("hideend", { gameover });
@@ -149,14 +156,18 @@ io.on("connection", (socket) => {
     // if all players are ready, the dice roll begins
     if (r) {
       const state = rollDice({ room: readyPlayer.roomId });
-      const gamestate = nextRound({ room: socket.roomname });
+      var gamestate = nextRound({ room: socket.roomname });
       io.to(socket.roomname).emit("newgamestate", { gamestate: state });
       io.to(socket.roomname).emit("diceroll", {
         dice1: gamestate.dice[0],
         dice2: gamestate.dice[1],
         dice3: gamestate.dice[2],
       });
-      io.to(socket.roomname).emit("showendmodal", { round: gamestate.round });
+      gamestate = calculateProfit(socket.roomname);
+      io.to(socket.roomname).emit("showendmodal", {
+        round: gamestate.round,
+        gamestate,
+      });
     } else {
       io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
