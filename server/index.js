@@ -23,6 +23,7 @@ const {
   clearBets,
   setInitialBalance,
   calculateProfit,
+  calculateProfit2,
   clearNets,
 } = require("./room");
 
@@ -117,7 +118,8 @@ io.on("connection", (socket) => {
   socket.on("showstartmodal", () => {
     const state = clearNets(socket.roomname);
     io.to(socket.roomname).emit("newgamestate", { gamestate: state });
-    io.to(socket.roomname).emit("showstartmodal");
+    io.to(socket.roomname).emit("cleardice");
+    io.to(socket.roomname).emit("showstartmodal", { round: state.round });
   });
   socket.on("hidestartmodal", () => {
     io.to(socket.roomname).emit("hidestart");
@@ -126,11 +128,12 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("showgameover");
   });
 
-  socket.on("hideendmodal", ({ round, maxRound }) => {
-    const gameover = round > maxRound;
-    console.log(gameover);
+  socket.on("hideendmodal", ({ maxRound }) => {
+    calculateProfit(socket.roomname);
     const state = clearBets(socket.roomname);
-    io.to(socket.roomname).emit("newgamestate", { gamestate: state });
+    // const a = nextRound({ room: socket.roomname });
+    const gameover = state.round > maxRound;
+    // io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("hideend", { gameover });
   });
 
@@ -146,31 +149,36 @@ io.on("connection", (socket) => {
   //SOCKET READY/TIMER OVER
   socket.on("readyplayer", ({ gamestate }) => {
     const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
+
     let r = true;
     for (let i = 0; i < readyPlayer.players.length; i++) {
       if (readyPlayer.players[i].ready === false) {
         r = false;
       }
     }
-    //if all players ready this if statement
+
     // if all players are ready, the dice roll begins
     if (r) {
       const state = rollDice({ room: readyPlayer.roomId });
-      var gamestate = nextRound({ room: socket.roomname });
-      io.to(socket.roomname).emit("newgamestate", { gamestate: state });
+      //io.to(socket.roomname).emit("newgamestate", { gamestate: state });
+
       io.to(socket.roomname).emit("diceroll", {
-        dice1: gamestate.dice[0],
-        dice2: gamestate.dice[1],
-        dice3: gamestate.dice[2],
+        dice1: state.dice[0],
+        dice2: state.dice[1],
+        dice3: state.dice[2],
       });
-      gamestate = calculateProfit(socket.roomname);
+      nextRound({ room: socket.roomname });
+      const gameroom = calculateProfit2(socket.roomname);
+
       io.to(socket.roomname).emit("showendmodal", {
-        round: gamestate.round,
-        gamestate,
+        gamestate: gameroom,
+        // round: gamestatee.round,
+        // gamestate: gamestatee,
       });
-    } else {
-      io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer });
     }
+    /*else {
+      io.to(readyPlayer.roomId).emit("gamestate", { gamestate: readyPlayer }); // this may have to change
+    }*/
   });
 
   // SOCKET BET

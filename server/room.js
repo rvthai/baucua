@@ -217,10 +217,12 @@ const clearNets = (room) => {
 
 const nextRound = ({ room }) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
+
   if (gameroom) {
     gameroom.round += 1;
-    return gameroom;
   }
+
+  return gameroom;
 };
 
 const rollDice = ({ room }) => {
@@ -249,6 +251,26 @@ const rollDice = ({ room }) => {
   return gameroom;
 };
 
+const calculateProfit2 = (room) => {
+  const gameroom = rooms.find((rm) => rm.roomId === room);
+
+  for (let die = 0; die < gameroom.dice.length; ++die) {
+    const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
+    if (bet.length > 0) {
+      for (let win = 0; win < bet.length; ++win) {
+        const player = gameroom.players.find((p) => p.id === bet[0].id);
+        player.net += bet[0].amount * 2;
+      }
+    }
+  }
+
+  for (let p = 0; p < gameroom.players.length; ++p) {
+    gameroom.players[p].ready = false;
+  }
+
+  return setRankings(room);
+};
+
 //cal for each dice
 const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
@@ -259,7 +281,6 @@ const calculateProfit = (room) => {
       for (let win = 0; win < bet.length; ++win) {
         const player = gameroom.players.find((p) => p.id === bet[0].id);
         player.total += bet[0].amount * 2;
-        player.net += bet[0].amount * 2;
       }
     }
   }
@@ -326,5 +347,6 @@ module.exports = {
   clearBets,
   setInitialBalance,
   calculateProfit,
+  calculateProfit2,
   clearNets,
 };
