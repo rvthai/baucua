@@ -251,16 +251,25 @@ const rollDice = ({ room }) => {
   return gameroom;
 };
 
-const calculateProfit2 = (room) => {
+const calculateProfit = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
 
+  var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
-    const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
-    if (bet.length > 0) {
-      for (let win = 0; win < bet.length; ++win) {
-        const player = gameroom.players.find((p) => p.id === bet[0].id);
-        player.net += bet[0].amount * 2;
+    const bets = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
+
+    if (bets.length > 0) {
+      for (let win = 0; win < bets.length; ++win) {
+        const player = gameroom.players.find((p) => p.id === bets[win].id);
+
+        if (prev_rolls.find((d) => d === gameroom.dice[die])) {
+          player.total += bets[win].amount;
+        } else {
+          player.total += bets[win].amount * 2;
+        }
       }
+
+      prev_rolls.push(gameroom.dice[die]);
     }
   }
 
@@ -271,17 +280,25 @@ const calculateProfit2 = (room) => {
   return setRankings(room);
 };
 
-//cal for each dice
-const calculateProfit = (room) => {
+const calculateProfit2 = (room) => {
   const gameroom = rooms.find((rm) => rm.roomId === room);
 
+  var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
-    const bet = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
-    if (bet.length > 0) {
-      for (let win = 0; win < bet.length; ++win) {
-        const player = gameroom.players.find((p) => p.id === bet[0].id);
-        player.total += bet[0].amount * 2;
+    const bets = gameroom.bets.filter((b) => b.animal === gameroom.dice[die]);
+
+    if (bets.length > 0) {
+      for (let win = 0; win < bets.length; ++win) {
+        const player = gameroom.players.find((p) => p.id === bets[win].id);
+
+        if (prev_rolls.find((d) => d === gameroom.dice[die])) {
+          player.net += bets[win].amount;
+        } else {
+          player.net += bets[win].amount * 2;
+        }
       }
+
+      prev_rolls.push(gameroom.dice[die]);
     }
   }
 

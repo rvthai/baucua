@@ -172,8 +172,6 @@ io.on("connection", (socket) => {
 
       io.to(socket.roomname).emit("showendmodal", {
         gamestate: gameroom,
-        // round: gamestatee.round,
-        // gamestate: gamestatee,
       });
     }
     /*else {
@@ -215,7 +213,7 @@ io.on("connection", (socket) => {
 
       if (r.length !== 0 && r[0].active) {
         const gamestate = getRoom({ room: user.room });
-        io.to(user.room).emit("gamestate", { gamestate });
+        io.to(user.room).emit("newgamestate", { gamestate });
       }
     }
   });
