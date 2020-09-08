@@ -54,6 +54,7 @@ const joinRoom = ({ id, name, room }) => {
     total: 0,
     net: 0,
     rank: 1,
+    bankrupt: false,
     color,
     ready: false,
   };
@@ -247,7 +248,9 @@ const rollDice = ({ room }) => {
     const d = animals[index];
     dice.push(d);
   }
+
   gameroom.dice = dice;
+
   return gameroom;
 };
 
@@ -275,6 +278,11 @@ const calculateProfit = (room) => {
 
   for (let p = 0; p < gameroom.players.length; ++p) {
     gameroom.players[p].ready = false;
+
+    if (gameroom.players[p].total === 0) {
+      gameroom.players[p].bankrupt = true;
+      gameroom.players[p].ready = true;
+    }
   }
 
   return setRankings(room);
@@ -302,11 +310,7 @@ const calculateProfit2 = (room) => {
     }
   }
 
-  for (let p = 0; p < gameroom.players.length; ++p) {
-    gameroom.players[p].ready = false;
-  }
-
-  return setRankings(room);
+  return setRankings2(room);
 };
 
 const setRankings = (room) => {
@@ -325,6 +329,49 @@ const setRankings = (room) => {
     } else {
       players[i].rank = players[i - 1].rank + 1;
     }
+  }
+
+  return gameroom;
+};
+
+const setRankings2 = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+
+  const players = gameroom.players;
+
+  players.sort((a, b) => {
+    return b.net - a.net;
+  });
+
+  return gameroom;
+};
+
+const checkBankrupt = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+  const players = gameroom.players;
+
+  for (let p = 0; p < players.length; p++) {
+    if (!players[p].bankrupt) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const resetRoom = (room) => {
+  const gameroom = rooms.find((r) => r.roomId === room);
+  gameroom.active = false;
+  gameroom.bets = [];
+  gameroom.dice = [];
+  gameroom.round = 1;
+
+  for (let i = 0; i < gameroom.players.length; i++) {
+    gameroom.players[i].total = 0;
+    gameroom.players[i].net = 0;
+    gameroom.players[i].rank = 1;
+    gameroom.players[i].bankrupt = false;
+    gameroom.players[i].ready = false;
   }
 
   return gameroom;
@@ -366,4 +413,6 @@ module.exports = {
   calculateProfit,
   calculateProfit2,
   clearNets,
+  checkBankrupt,
+  resetRoom,
 };

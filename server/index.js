@@ -25,6 +25,8 @@ const {
   calculateProfit,
   calculateProfit2,
   clearNets,
+  checkBankrupt,
+  resetRoom,
 } = require("./room");
 
 const port = 9000;
@@ -76,14 +78,6 @@ io.on("connection", (socket) => {
       roomid: room,
       id: socket.id,
     });
-
-    if (r[0].active) {
-      const gamestate = getRoom({ room });
-      const chat = getChatroom({ room });
-      io.to(room).emit("gamestart", { gamestate });
-      io.to(room).emit("gamestate", { gamestate });
-      io.to(room).emit("chatbox", { chat });
-    }
   });
 
   // SOCKET ROOM CODE CHECK
@@ -93,6 +87,8 @@ io.on("connection", (socket) => {
       callback(true, "The room you tried to enter does not exist.");
     } else if (r.length > 0 && r[0].players.length >= 8) {
       callback(true, "The room you tried to enter is already full.");
+    } else if (r[0].active) {
+      callback(true, "The room you tried to enter has already started a game.");
     }
     callback();
   });
@@ -125,6 +121,8 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("hidestart");
   });
   socket.on("showgameover", () => {
+    const state = clearNets(socket.roomname);
+    io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("showgameover");
   });
 
@@ -132,7 +130,10 @@ io.on("connection", (socket) => {
     calculateProfit(socket.roomname);
     const state = clearBets(socket.roomname);
     // const a = nextRound({ room: socket.roomname });
-    const gameover = state.round > maxRound;
+    var gameover = false;
+    if (state.round > maxRound || checkBankrupt(socket.roomname)) {
+      gameover = true;
+    }
     // io.to(socket.roomname).emit("newgamestate", { gamestate: state });
     io.to(socket.roomname).emit("hideend", { gameover });
   });
@@ -149,6 +150,7 @@ io.on("connection", (socket) => {
   //SOCKET READY/TIMER OVER
   socket.on("readyplayer", ({ gamestate }) => {
     const readyPlayer = setReady({ room: gamestate.roomId, id: socket.id });
+    io.to(socket.roomname).emit("newgamestate", { gamestate: readyPlayer });
 
     let r = true;
     for (let i = 0; i < readyPlayer.players.length; i++) {
@@ -196,6 +198,12 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("chatbox", { chat });
   });
 
+  // Socket return
+  socket.on("return", () => {
+    const gamestate = resetRoom(socket.roomname);
+    io.to(socket.roomname).emit("gamerestart", { gamestate });
+  });
+
   // SOCKET DISCONNECT
   socket.on("disconnect", () => {
     console.log(socket.id + " had left");
@@ -209,11 +217,11 @@ io.on("connection", (socket) => {
         const newHost = r[0].players[0].id;
         r[0].host = newHost;
         io.to(user.room).emit("newhost", r[0].host);
-      }
 
-      if (r.length !== 0 && r[0].active) {
-        const gamestate = getRoom({ room: user.room });
-        io.to(user.room).emit("newgamestate", { gamestate });
+        if (r[0].active) {
+          const gamestate = getRoom({ room: user.room });
+          io.to(user.room).emit("newgamestate", { gamestate });
+        }
       }
     }
   });
