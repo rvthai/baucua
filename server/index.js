@@ -27,6 +27,7 @@ const {
   clearNets,
   checkBankrupt,
   resetRoom,
+  checkRoom,
 } = require("./room");
 
 const port = 9000;
@@ -39,25 +40,34 @@ io.on("connection", (socket) => {
   socket.on("host", ({ name, room }, callback) => {
     socket.roomname = room;
 
+    // Check to see if room already exists
+    if (findRoom(room).length > 0) {
+      callback("Unable to create the room.");
+    }
+
     // Create a new room
-    const { r, err } = createRoom({ id: socket.id, room });
-    if (err) return callback(err);
+    createRoom({ id: socket.id, room });
     callback();
 
     // Add socket to the room
+    const status = checkRoom(room);
+    if (status) {
+      callback(status);
+    }
+    callback();
+
     const { user, error } = joinRoom({ id: socket.id, name, room });
-    if (error) return callback(error);
     socket.join(user.room);
     callback();
 
     // Emit data back to client
     const rm = findRoom(room);
-    io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
     io.to(user.room).emit("roomdata", {
-      room: rm[0],
-      roomid: room,
+      room: room,
+      host: rm[0].host,
       id: socket.id,
     });
+    io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
   });
 
   // SOCKET JOIN
@@ -66,7 +76,6 @@ io.on("connection", (socket) => {
 
     // Add socket to specified room
     const { user, error } = joinRoom({ id: socket.id, name, room });
-    if (error) return callback(error);
     socket.join(user.room);
     callback();
 
@@ -74,21 +83,17 @@ io.on("connection", (socket) => {
     const r = findRoom(room);
     io.to(user.room).emit("players", { players: getUserInRoom(user.room) });
     io.to(user.room).emit("roomdata", {
-      room: r[0],
-      roomid: room,
+      room: room,
+      host: r[0].host,
       id: socket.id,
     });
   });
 
   // SOCKET ROOM CODE CHECK
   socket.on("check", (room, callback) => {
-    const r = findRoom(room);
-    if (r.length === 0) {
-      callback(true, "The room you tried to enter does not exist.");
-    } else if (r.length > 0 && r[0].players.length >= 8) {
-      callback(true, "The room you tried to enter is already full.");
-    } else if (r[0].active) {
-      callback(true, "The room you tried to enter has already started a game.");
+    const status = checkRoom(room);
+    if (status) {
+      callback(status);
     }
     callback();
   });
@@ -105,9 +110,9 @@ io.on("connection", (socket) => {
   });
 
   // SOCKET GAME
-  socket.on("startgame", ({ room, balance }) => {
-    const gamestate = setInitialBalance({ room, balance });
-    io.to(room).emit("gamestart", { gamestate });
+  socket.on("startgame", ({ balance }) => {
+    const gamestate = setInitialBalance({ room: socket.roomname, balance });
+    io.to(socket.roomname).emit("gamestart", { gamestate });
   });
 
   //SOCKET START AND END MODAL
@@ -139,11 +144,11 @@ io.on("connection", (socket) => {
   });
 
   // SOCKET TIMER
-  socket.on("timer", ({ room, timer }) => {
+  socket.on("timer", ({ timer }) => {
     if (timer === 0) {
-      io.to(room).emit("endtimer");
+      io.to(socket.roomname).emit("endtimer");
     } else {
-      io.to(room).emit("timer", { second: timer - 1 });
+      io.to(socket.roomname).emit("timer", { second: timer - 1 });
     }
   });
 
@@ -165,9 +170,9 @@ io.on("connection", (socket) => {
       //io.to(socket.roomname).emit("newgamestate", { gamestate: state });
 
       io.to(socket.roomname).emit("diceroll", {
-        dice1: state.dice[0],
-        dice2: state.dice[1],
-        dice3: state.dice[2],
+        die1: state.dice[0],
+        die2: state.dice[1],
+        die3: state.dice[2],
       });
       nextRound({ room: socket.roomname });
       const gameroom = calculateProfit2(socket.roomname);
@@ -182,9 +187,9 @@ io.on("connection", (socket) => {
   });
 
   // SOCKET BET
-  socket.on("bet", ({ room, id, amount, animal }) => {
-    const gamestate = addBet({ room, id, amount, animal });
-    io.to(room).emit("newgamestate", { gamestate });
+  socket.on("bet", ({ id, amount, animal }) => {
+    const gamestate = addBet({ room: socket.roomname, id, amount, animal });
+    io.to(socket.roomname).emit("newgamestate", { gamestate });
   });
 
   socket.on("unbet", ({ id, amount, animal }) => {
@@ -193,13 +198,13 @@ io.on("connection", (socket) => {
   });
 
   // SOCKET CHAT
-  socket.on("sendMessage", ({ name, message }) => {
-    const chat = addMessage({ room: socket.roomname, name, message });
-    io.to(socket.roomname).emit("chatbox", { chat });
+  socket.on("sendMessage", ({ id, name, message }) => {
+    const chatbox = addMessage({ id, room: socket.roomname, name, message });
+    io.to(socket.roomname).emit("chatbox", { chatbox });
   });
 
   // Socket return
-  socket.on("return", () => {
+  socket.on("playagain", () => {
     const gamestate = resetRoom(socket.roomname);
     io.to(socket.roomname).emit("gamerestart", { gamestate });
   });

@@ -3,10 +3,6 @@ const chatrooms = [];
 
 // Creates a new room
 const createRoom = ({ id, room }) => {
-  if (roomExists(room)) {
-    return { error: "Room already exists" };
-  }
-
   const colors = [
     "#c04e48", //red
     "#4a7eac", //blue
@@ -43,9 +39,6 @@ const createRoom = ({ id, room }) => {
 const joinRoom = ({ id, name, room }) => {
   const index = rooms.findIndex((r) => r.roomId === room);
 
-  if (index === -1 || name === null) {
-    return { error: "Room does not exist" };
-  }
   const color = rooms[index].colors.shift();
   const user = {
     id,
@@ -60,6 +53,19 @@ const joinRoom = ({ id, name, room }) => {
   };
   rooms[index].players.push(user);
   return { user };
+};
+
+const checkRoom = (room) => {
+  const r = findRoom(room);
+  if (r.length === 0) {
+    return "The room you tried to enter does not exist.";
+  } else if (r.length > 0 && r[0].players.length >= 8) {
+    return "The room you tried to enter is already full.";
+  } else if (r[0].active) {
+    return "The room you tried to enter has already started a game.";
+  }
+
+  return false;
 };
 
 const getUserInRoom = (room) => {
@@ -95,16 +101,6 @@ const removeUser = ({ id, room }) => {
 };
 
 const findRoom = (room) => rooms.filter((r) => r.roomId === room);
-
-// Check if a room exists
-const roomExists = (room) => {
-  const index = rooms.findIndex((r) => r.roomId === room);
-  if (index === -1) {
-    return false;
-  }
-
-  return true;
-};
 
 const getRoom = ({ room }) => {
   const index = rooms.findIndex((rm) => rm.roomId === room);
@@ -377,12 +373,29 @@ const resetRoom = (room) => {
   return gameroom;
 };
 
-const addMessage = ({ room, name, message }) => {
+const addMessage = ({ id, room, name, message }) => {
   const index = chatrooms.findIndex((c) => c.roomId === room);
+  const room_index = rooms.findIndex((rm) => rm.roomId === room);
+
+  if (room_index === -1) {
+    return null;
+  }
+
+  const playerList = rooms[index].players;
+  const playerIndex = playerList.findIndex((user) => user.id === id);
+
+  if (playerIndex === -1) {
+    return null;
+  }
+
   if (index !== -1) {
-    const messageObject = { name: name, message: message };
+    const messageObject = {
+      name: name,
+      color: playerList[playerIndex].color,
+      message: message,
+    };
     chatrooms[index].messages.push(messageObject);
-    return chatrooms[index];
+    return chatrooms[index].messages;
   }
 };
 
@@ -415,4 +428,5 @@ module.exports = {
   clearNets,
   checkBankrupt,
   resetRoom,
+  checkRoom,
 };
