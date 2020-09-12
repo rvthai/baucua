@@ -1,7 +1,8 @@
+// Global data structures
 const rooms = [];
 const chatrooms = [];
 
-// Creates a new room
+// Functions that handle room events
 const createRoom = ({ id, room }) => {
   const colors = [
     "#c04e48", //red
@@ -32,14 +33,12 @@ const createRoom = ({ id, room }) => {
 
   rooms.push(r);
   chatrooms.push(c);
-
-  return { r };
 };
 
 const joinRoom = ({ id, name, room }) => {
-  const index = rooms.findIndex((r) => r.roomId === room);
+  const gameroom = findRoom(room)[0];
 
-  const color = rooms[index].colors.shift();
+  const color = gameroom.colors.shift();
   const user = {
     id,
     name,
@@ -50,10 +49,15 @@ const joinRoom = ({ id, name, room }) => {
     bankrupt: false,
     color,
     ready: false,
+    betClicked: false,
   };
-  rooms[index].players.push(user);
-  return { user };
+
+  gameroom.players.push(user);
+
+  return user;
 };
+
+const findRoom = (room) => rooms.filter((r) => r.roomId === room);
 
 const checkRoom = (room) => {
   const r = findRoom(room);
@@ -68,52 +72,21 @@ const checkRoom = (room) => {
   return false;
 };
 
-const getUserInRoom = (room) => {
-  const roomList = rooms.filter((r) => r.roomId === room);
-  if (roomList.length === 0) {
-    return { error: "Room does not exist" };
+// Functions that handle balance and money interactions
+const setInitialBalance = ({ room, balance }) => {
+  const gameroom = findRoom(room)[0];
+
+  gameroom.active = true;
+
+  for (let i = 0; i < gameroom.players.length; i++) {
+    gameroom.players[i].total = balance;
   }
-  return roomList[0].players;
+
+  return gameroom;
 };
 
-const removeUser = ({ id, room }) => {
-  const index = rooms.findIndex((rm) => rm.roomId === room);
-
-  if (index === -1) {
-    return null;
-  }
-
-  const playerList = rooms[index].players;
-  const playerIndex = playerList.findIndex((user) => user.id === id);
-
-  if (playerIndex === -1) {
-    return null;
-  }
-
-  const chatIndex = chatrooms.findIndex((cr) => cr.roomId === room);
-  const user = playerList.splice(playerIndex, 1)[0];
-  rooms[index].colors.unshift(user.color);
-  if (rooms[index].players.length === 0) {
-    rooms.splice(index, 1);
-    chatrooms.splice(chatIndex, 1);
-  }
-  return user;
-};
-
-const findRoom = (room) => rooms.filter((r) => r.roomId === room);
-
-const getRoom = ({ room }) => {
-  const index = rooms.findIndex((rm) => rm.roomId === room);
-  if (index !== -1) {
-    rooms[index].active = true;
-    return rooms[index];
-  }
-  return { error: "Room does not exist" };
-};
-
-//GAME FUNCTIONS
 const addBet = ({ room, id, amount, animal }) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
+  const gameroom = findRoom(room)[0];
   if (gameroom) {
     const player = gameroom.players.find((p) => p.id === id);
 
@@ -143,7 +116,7 @@ const addBet = ({ room, id, amount, animal }) => {
 };
 
 const removeBet = ({ room, id, amount, animal }) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
+  const gameroom = findRoom(room)[0];
   if (gameroom) {
     const player = gameroom.players.find((p) => p.id === id);
 
@@ -166,33 +139,8 @@ const removeBet = ({ room, id, amount, animal }) => {
   }
 };
 
-const setInitialBalance = ({ room, balance }) => {
-  const index = rooms.findIndex((rm) => rm.roomId === room);
-  if (index !== -1) {
-    rooms[index].active = true;
-
-    for (let i = 0; i < rooms[index].players.length; i++) {
-      rooms[index].players[i].total = balance;
-    }
-
-    return rooms[index];
-  }
-  return { error: "Room does not exist" };
-};
-
-const setReady = ({ room, id }) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
-  if (gameroom) {
-    const player = gameroom.players.find((user) => user.id === id);
-    if (player) {
-      player.ready = true;
-      return gameroom;
-    }
-  }
-};
-
 const clearBets = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+  const gameroom = findRoom(room)[0];
   if (gameroom) {
     gameroom.bets = [];
   }
@@ -201,7 +149,7 @@ const clearBets = (room) => {
 };
 
 const clearNets = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+  const gameroom = findRoom(room)[0];
 
   if (gameroom) {
     for (let i = 0; i < gameroom.players.length; i++) {
@@ -212,46 +160,8 @@ const clearNets = (room) => {
   return gameroom;
 };
 
-const nextRound = ({ room }) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
-
-  if (gameroom) {
-    gameroom.round += 1;
-  }
-
-  return gameroom;
-};
-
-const rollDice = ({ room }) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
-  const animals = ["deer", "gourd", "rooster", "fish", "crab", "shrimp"];
-
-  // for extra randomness, will randomly resort the array before picking
-  let a = animals.length,
-    k,
-    temp;
-  while (--a > 0) {
-    k = Math.floor(Math.random() * (a + 1));
-    temp = animals[k];
-    animals[k] = animals[a];
-    animals[a] = temp;
-  }
-
-  const dice = [];
-  let die;
-  for (die = 0; die < 3; die++) {
-    const index = Math.floor(Math.random() * 6);
-    const d = animals[index];
-    dice.push(d);
-  }
-
-  gameroom.dice = dice;
-
-  return gameroom;
-};
-
-const calculateProfit = (room) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
+const calculateBets = (room) => {
+  const gameroom = findRoom(room)[0];
 
   var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
@@ -281,11 +191,11 @@ const calculateProfit = (room) => {
     }
   }
 
-  return setRankings(room);
+  return setRankingsByTotal(room);
 };
 
-const calculateProfit2 = (room) => {
-  const gameroom = rooms.find((rm) => rm.roomId === room);
+const calculateNets = (room) => {
+  const gameroom = findRoom(room)[0];
 
   var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
@@ -306,11 +216,11 @@ const calculateProfit2 = (room) => {
     }
   }
 
-  return setRankings2(room);
+  return setRankingsByNet(room);
 };
 
-const setRankings = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+const setRankingsByTotal = (room) => {
+  const gameroom = findRoom(room)[0];
 
   const players = gameroom.players;
 
@@ -330,8 +240,8 @@ const setRankings = (room) => {
   return gameroom;
 };
 
-const setRankings2 = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+const setRankingsByNet = (room) => {
+  const gameroom = findRoom(room)[0];
 
   const players = gameroom.players;
 
@@ -343,7 +253,7 @@ const setRankings2 = (room) => {
 };
 
 const checkBankrupt = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+  const gameroom = findRoom(room)[0];
   const players = gameroom.players;
 
   for (let p = 0; p < players.length; p++) {
@@ -355,8 +265,62 @@ const checkBankrupt = (room) => {
   return true;
 };
 
+// Functions that handle the dice roll
+const rollDice = ({ room }) => {
+  const gameroom = findRoom(room)[0];
+  const animals = ["deer", "gourd", "rooster", "fish", "crab", "shrimp"];
+
+  // for extra randomness, will randomly resort the array before picking
+  let a = animals.length,
+    k,
+    temp;
+  while (--a > 0) {
+    k = Math.floor(Math.random() * (a + 1));
+    temp = animals[k];
+    animals[k] = animals[a];
+    animals[a] = temp;
+  }
+
+  const dice = [];
+  let die;
+  for (die = 0; die < 3; die++) {
+    const index = Math.floor(Math.random() * 6);
+    const d = animals[index];
+    dice.push(d);
+  }
+
+  gameroom.dice = dice;
+
+  return gameroom;
+};
+
+// Functions that handle player ready
+const setReady = ({ room, id, locked_in }) => {
+  const gameroom = findRoom(room)[0];
+  if (gameroom) {
+    const player = gameroom.players.find((user) => user.id === id);
+    if (player) {
+      player.betClicked = locked_in;
+      player.ready = true;
+      return gameroom;
+    }
+  }
+};
+
+// Functions that handle round transitions
+const nextRound = ({ room }) => {
+  const gameroom = findRoom(room)[0];
+
+  if (gameroom) {
+    gameroom.round += 1;
+  }
+
+  return gameroom;
+};
+
+// Functions that handle reseting the gamestate on play again
 const resetRoom = (room) => {
-  const gameroom = rooms.find((r) => r.roomId === room);
+  const gameroom = findRoom(room)[0];
   gameroom.active = false;
   gameroom.bets = [];
   gameroom.dice = [];
@@ -373,11 +337,29 @@ const resetRoom = (room) => {
   return gameroom;
 };
 
+// Functions that handle the chat
 const addMessage = ({ id, room, name, message }) => {
-  const index = chatrooms.findIndex((c) => c.roomId === room);
-  const room_index = rooms.findIndex((rm) => rm.roomId === room);
+  const chatroom = chatrooms.find((c) => c.roomId === room);
+  const gameroom = findRoom(room)[0];
 
-  if (room_index === -1) {
+  const player = gameroom.players.find((p) => p.id === id);
+
+  const messageObject = {
+    name: name,
+    color: player.color,
+    message: message,
+  };
+
+  chatroom.messages.push(messageObject);
+
+  return chatroom.messages;
+};
+
+// Functions to handle user disconnection
+const removeUser = ({ id, room }) => {
+  const index = rooms.findIndex((rm) => rm.roomId === room);
+
+  if (index === -1) {
     return null;
   }
 
@@ -388,45 +370,34 @@ const addMessage = ({ id, room, name, message }) => {
     return null;
   }
 
-  if (index !== -1) {
-    const messageObject = {
-      name: name,
-      color: playerList[playerIndex].color,
-      message: message,
-    };
-    chatrooms[index].messages.push(messageObject);
-    return chatrooms[index].messages;
+  const chatIndex = chatrooms.findIndex((cr) => cr.roomId === room);
+  const user = playerList.splice(playerIndex, 1)[0];
+  rooms[index].colors.unshift(user.color);
+  if (rooms[index].players.length === 0) {
+    rooms.splice(index, 1);
+    chatrooms.splice(chatIndex, 1);
   }
+  return user;
 };
 
-const getChatroom = ({ room }) => {
-  const index = chatrooms.findIndex((rm) => rm.roomId === room);
-  if (index !== -1) {
-    return chatrooms[index];
-  }
-  return { error: "Chatroom does not exist" };
-};
-
+// Module Exports
 module.exports = {
   createRoom,
   joinRoom,
-  getUserInRoom,
-  removeUser,
   findRoom,
-  getRoom,
+  checkRoom,
+  setInitialBalance,
   addBet,
   removeBet,
+  clearBets,
+  clearNets,
+  calculateBets,
+  calculateNets,
+  checkBankrupt,
+  rollDice,
   setReady,
   nextRound,
-  rollDice,
-  addMessage,
-  getChatroom,
-  clearBets,
-  setInitialBalance,
-  calculateProfit,
-  calculateProfit2,
-  clearNets,
-  checkBankrupt,
   resetRoom,
-  checkRoom,
+  addMessage,
+  removeUser,
 };
