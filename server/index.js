@@ -57,15 +57,6 @@ io.on("connection", (socket) => {
     const user = joinRoom({ id: socket.id, name, room });
     socket.join(user.room);
     callback();
-
-    // Emit data back to client
-    const r = findRoom(room);
-    io.to(user.room).emit("roomdata", {
-      room: room,
-      host: r[0].host,
-      id: socket.id,
-    });
-    io.to(user.room).emit("players", { players: r[0].players });
   });
 
   /* SOCKET - JOIN */
@@ -76,15 +67,6 @@ io.on("connection", (socket) => {
     const user = joinRoom({ id: socket.id, name, room });
     socket.join(user.room);
     callback();
-
-    // Emit data back to client
-    const r = findRoom(room);
-    io.to(user.room).emit("players", { players: r[0].players });
-    io.to(user.room).emit("roomdata", {
-      room: room,
-      host: r[0].host,
-      id: socket.id,
-    });
   });
 
   /* SOCKET - CHECK ROOM CODE */
@@ -94,6 +76,17 @@ io.on("connection", (socket) => {
       callback(status);
     }
     callback();
+  });
+
+  /* SOCKET -  ROOM SETUP*/
+  socket.on("roomsetup", () => {
+    const r = findRoom(socket.roomname);
+    io.to(socket.roomname).emit("roomdata", {
+      room: socket.roomname,
+      host: r[0].host,
+      id: socket.id,
+    });
+    io.to(socket.roomname).emit("players", { players: r[0].players });
   });
 
   /* SOCKET - SETTINGS */
