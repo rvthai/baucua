@@ -13,6 +13,7 @@ const {
   joinRoom,
   findRoom,
   checkRoom,
+  changeRoomSettings,
   setInitialBalance,
   addBet,
   removeBet,
@@ -83,6 +84,7 @@ io.on("connection", (socket) => {
     const r = findRoom(socket.roomname);
     io.to(socket.roomname).emit("roomdata", {
       room: socket.roomname,
+      settings: r[0].settings,
       host: r[0].host,
       id: socket.id,
     });
@@ -91,12 +93,16 @@ io.on("connection", (socket) => {
 
   /* SOCKET - SETTINGS */
   socket.on("timerchange", ({ timer }) => {
+    changeRoomSettings(socket.roomname, "time", timer);
     io.to(socket.roomname).emit("timeropt", { timer });
   });
   socket.on("roundchange", ({ round }) => {
+    changeRoomSettings(socket.roomname, "rounds", round);
     io.to(socket.roomname).emit("roundopt", { round });
   });
   socket.on("balancechange", ({ balance }) => {
+    console.log(balance);
+    changeRoomSettings(socket.roomname, "balance", balance);
     io.to(socket.roomname).emit("balanceopt", { balance });
   });
 
@@ -116,11 +122,14 @@ io.on("connection", (socket) => {
   socket.on("hidestartmodal", () => {
     io.to(socket.roomname).emit("hidestart");
   });
-  socket.on("hideendmodal", ({ maxRound }) => {
+  socket.on("hideendmodal", () => {
     calculateBets(socket.roomname);
     const gamestate = clearBets(socket.roomname);
     var gameover = false;
-    if (gamestate.round > maxRound || checkBankrupt(socket.roomname)) {
+    if (
+      gamestate.round > gamestate.settings.rounds ||
+      checkBankrupt(socket.roomname)
+    ) {
       gameover = true;
     }
     io.to(socket.roomname).emit("hideend", { gameover });
@@ -191,9 +200,31 @@ io.on("connection", (socket) => {
   });
 
   /* SOCKET - CHAT */
-  socket.on("sendMessage", ({ id, name, message }) => {
+  socket.on("sendmessage", ({ id, name, message }) => {
     const chatbox = addMessage({ id, room: socket.roomname, name, message });
     io.to(socket.roomname).emit("chatbox", { chatbox });
+  });
+
+  /* SOCKET - Remove Player NOT disconnected */
+  socket.on("removeplayer", () => {
+    const user = removeUser({ id: socket.id, room: socket.roomname });
+
+    if (user) {
+      const r = findRoom(user.room);
+      if (r.length !== 0) {
+        io.to(user.room).emit("players", {
+          players: r[0].players,
+        });
+        const newHost = r[0].players[0].id;
+        r[0].host = newHost;
+        io.to(user.room).emit("newhost", r[0].host);
+
+        if (r[0].active) {
+          const gamestate = r[0];
+          io.to(user.room).emit("newgamestate", { gamestate });
+        }
+      }
+    }
   });
 
   /* SOCKET - DISCONNECT */

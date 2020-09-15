@@ -24,6 +24,7 @@ const createRoom = ({ id, room }) => {
     dice: [],
     colors: colors,
     round: 1,
+    settings: { time: 30, rounds: 5, balance: 10 },
   };
 
   const c = {
@@ -70,6 +71,20 @@ const checkRoom = (room) => {
   }
 
   return false;
+};
+
+const changeRoomSettings = (room, setting, value) => {
+  const gameroom = findRoom(room)[0];
+
+  if (setting === "time") {
+    gameroom.settings.time = value;
+  } else if (setting === "rounds") {
+    gameroom.settings.rounds = value;
+  } else if (setting === "balance") {
+    gameroom.settings.balance = value;
+  }
+
+  return gameroom;
 };
 
 // Functions that handle balance and money interactions
@@ -386,6 +401,7 @@ module.exports = {
   joinRoom,
   findRoom,
   checkRoom,
+  changeRoomSettings,
   setInitialBalance,
   addBet,
   removeBet,
