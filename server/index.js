@@ -101,7 +101,6 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("roundopt", { round });
   });
   socket.on("balancechange", ({ balance }) => {
-    console.log(balance);
     changeRoomSettings(socket.roomname, "balance", balance);
     io.to(socket.roomname).emit("balanceopt", { balance });
   });
