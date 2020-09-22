@@ -2,6 +2,14 @@
 const rooms = [];
 const chatrooms = [];
 
+// FUNCTIONS I ADD -------------------------------------------------------------
+// const startTimer = (room) => {
+//   const gameroom = findRoom(room)[0];
+
+//   return gameroom.timer -= 1
+// }
+// FUNCTIONS I ADD -------------------------------------------------------------
+
 // Functions that handle room events
 const createRoom = ({ id, room }) => {
   const colors = [
@@ -25,6 +33,7 @@ const createRoom = ({ id, room }) => {
     colors: colors,
     round: 1,
     settings: { time: 30, rounds: 5, balance: 10 },
+    timer: 30,
   };
 
   const c = {
@@ -50,7 +59,6 @@ const joinRoom = ({ id, name, room }) => {
     bankrupt: false,
     color,
     ready: false,
-    betClicked: false,
   };
 
   gameroom.players.push(user);
@@ -78,6 +86,7 @@ const changeRoomSettings = (room, setting, value) => {
 
   if (setting === "time") {
     gameroom.settings.time = value;
+    gameroom.timer = value;
   } else if (setting === "rounds") {
     gameroom.settings.rounds = value;
   } else if (setting === "balance") {
@@ -85,6 +94,36 @@ const changeRoomSettings = (room, setting, value) => {
   }
 
   return gameroom;
+};
+
+const countdown = (room) => {
+  const gameroom = findRoom(room)[0];
+  if (gameroom === undefined || allReady(gameroom)) {
+    return null;
+  }
+
+  gameroom.timer -= 1;
+
+  return gameroom.timer;
+};
+
+const resetTime = (room) => {
+  const gameroom = findRoom(room)[0];
+  gameroom.timer = gameroom.settings.time;
+  return gameroom.timer;
+};
+
+// helper function for countdown
+const allReady = (gameroom) => {
+  const players = gameroom.players;
+
+  for (let i = 0; i < players.length; i++) {
+    if (players[i].ready === false) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 // Functions that handle balance and money interactions
@@ -177,6 +216,9 @@ const clearNets = (room) => {
 
 const calculateBets = (room) => {
   const gameroom = findRoom(room)[0];
+  if (gameroom === undefined) {
+    return null;
+  }
 
   var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
@@ -211,6 +253,11 @@ const calculateBets = (room) => {
 
 const calculateNets = (room) => {
   const gameroom = findRoom(room)[0];
+  if (gameroom === undefined) {
+    return null;
+  }
+
+  // what if player leaves right on this function call? might need to do some checking
 
   var prev_rolls = [];
   for (let die = 0; die < gameroom.dice.length; ++die) {
@@ -239,20 +286,22 @@ const setRankingsByTotal = (room) => {
 
   const players = gameroom.players;
 
-  players.sort((a, b) => {
+  const sorted_players = [...players].sort((a, b) => {
     return b.total - a.total;
   });
 
-  players[0].rank = 1;
-  for (let i = 1; i < players.length; i++) {
-    if (players[i].total === players[i - 1].total) {
-      players[i].rank = players[i - 1].rank;
+  sorted_players[0].rank = 1;
+  for (let i = 1; i < sorted_players.length; i++) {
+    if (sorted_players[i].total === sorted_players[i - 1].total) {
+      sorted_players[i].rank = sorted_players[i - 1].rank;
     } else {
-      players[i].rank = players[i - 1].rank + 1;
+      sorted_players[i].rank = sorted_players[i - 1].rank + 1;
     }
   }
 
-  return gameroom;
+  return sorted_players;
+
+  //return gameroom;
 };
 
 const setRankingsByNet = (room) => {
@@ -260,11 +309,11 @@ const setRankingsByNet = (room) => {
 
   const players = gameroom.players;
 
-  players.sort((a, b) => {
+  const sorted_players = [...players].sort((a, b) => {
     return b.net - a.net;
   });
 
-  return gameroom;
+  return sorted_players;
 };
 
 const checkBankrupt = (room) => {
@@ -283,6 +332,8 @@ const checkBankrupt = (room) => {
 // Functions that handle the dice roll
 const rollDice = ({ room }) => {
   const gameroom = findRoom(room)[0];
+
+  if (gameroom === undefined) return null;
   const animals = ["deer", "gourd", "rooster", "fish", "crab", "shrimp"];
 
   // for extra randomness, will randomly resort the array before picking
@@ -310,32 +361,46 @@ const rollDice = ({ room }) => {
 };
 
 // Functions that handle player ready
-const setReady = ({ room, id, locked_in }) => {
+const setReady = ({ room, id }) => {
   const gameroom = findRoom(room)[0];
   if (gameroom) {
     const player = gameroom.players.find((user) => user.id === id);
     if (player) {
-      player.betClicked = locked_in;
       player.ready = true;
       return gameroom;
     }
   }
 };
 
-// Functions that handle round transitions
-const nextRound = ({ room }) => {
+const setAllReady = (room) => {
   const gameroom = findRoom(room)[0];
+  const players = gameroom.players;
 
-  if (gameroom) {
-    gameroom.round += 1;
+  for (let i = 0; i < players.length; i++) {
+    if (players[i].ready === false) {
+      players[i].ready = true;
+    }
   }
 
   return gameroom;
 };
 
+// Functions that handle round transitions
+const nextRound = (room) => {
+  const gameroom = findRoom(room)[0];
+  if (gameroom === undefined) return null;
+
+  gameroom.round += 1;
+  if (gameroom.round > gameroom.settings.rounds) {
+    return -1;
+  }
+  return gameroom.round;
+};
+
 // Functions that handle reseting the gamestate on play again
 const resetRoom = (room) => {
   const gameroom = findRoom(room)[0];
+  // if it is undefined then return something else
   gameroom.active = false;
   gameroom.bets = [];
   gameroom.dice = [];
@@ -412,8 +477,11 @@ module.exports = {
   checkBankrupt,
   rollDice,
   setReady,
+  setAllReady,
   nextRound,
   resetRoom,
   addMessage,
   removeUser,
+  countdown,
+  resetTime,
 };
