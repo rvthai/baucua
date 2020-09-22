@@ -2,16 +2,9 @@
 const rooms = [];
 const chatrooms = [];
 
-// FUNCTIONS I ADD -------------------------------------------------------------
-// const startTimer = (room) => {
-//   const gameroom = findRoom(room)[0];
-
-//   return gameroom.timer -= 1
-// }
-// FUNCTIONS I ADD -------------------------------------------------------------
-
 // Functions that handle room events
-const createRoom = ({ id, room }) => {
+// Create and add a new room to the server
+const createRoom = (id, room) => {
   const colors = [
     "#c04e48", //red
     "#4a7eac", //blue
@@ -25,14 +18,14 @@ const createRoom = ({ id, room }) => {
 
   const r = {
     roomId: room,
-    host: id,
     active: false,
+    host: id,
     players: [],
     bets: [],
     dice: [],
     colors: colors,
-    round: 1,
     settings: { time: 30, rounds: 5, balance: 10 },
+    round: 1,
     timer: 30,
   };
 
@@ -45,19 +38,22 @@ const createRoom = ({ id, room }) => {
   chatrooms.push(c);
 };
 
-const joinRoom = ({ id, name, room }) => {
+// Add a player to a room
+const joinRoom = (id, name, room) => {
   const gameroom = findRoom(room)[0];
+  if (gameroom === undefined) return null;
 
   const color = gameroom.colors.shift();
+
   const user = {
     id,
     name,
+    color,
     room,
     total: 0,
     net: 0,
     rank: 1,
     bankrupt: false,
-    color,
     ready: false,
   };
 
@@ -68,14 +64,14 @@ const joinRoom = ({ id, name, room }) => {
 
 const findRoom = (room) => rooms.filter((r) => r.roomId === room);
 
-const checkRoom = (room) => {
+const checkRoom = ({ room }) => {
   const r = findRoom(room);
   if (r.length === 0) {
     return "The room you tried to enter does not exist.";
   } else if (r.length > 0 && r[0].players.length >= 8) {
     return "The room you tried to enter is already full.";
   } else if (r[0].active) {
-    return "The room you tried to enter has already started a game.";
+    return "The room you tried to enter has already started.";
   }
 
   return false;

@@ -24,7 +24,6 @@ const {
   checkBankrupt,
   rollDice,
   setReady,
-  setAllReady,
   nextRound,
   resetRoom,
   addMessage,
@@ -37,17 +36,17 @@ const {
 io.on("connection", (socket) => {
   console.log(socket.id + " has just connected");
 
-  /* SOCKET - HOST */
+  // SOCKET HANDLER - HOSTING A ROOM
   socket.on("host", ({ name, room }, callback) => {
     socket.roomname = room;
 
-    // Check to see if room already exists
+    // Error checking to see if room already exists
     if (findRoom(room).length > 0) {
       callback("Unable to create the room.");
     }
 
     // Create a new room
-    createRoom({ id: socket.id, room });
+    createRoom(socket.id, room);
     callback();
 
     // Check that room was successfully created before joining
@@ -55,42 +54,47 @@ io.on("connection", (socket) => {
     if (status) {
       callback(status);
     }
-    callback();
 
     // Add socket to the room
-    const user = joinRoom({ id: socket.id, name, room });
+    const user = joinRoom(socket.id, name, room);
+    if (user === null) return null;
     socket.join(user.room);
     callback();
   });
 
-  /* SOCKET - JOIN */
+  // SOCKET HANDLER - JOINING A ROOM
   socket.on("join", ({ name, room }, callback) => {
     socket.roomname = room;
 
     // Add socket to specified room
     const user = joinRoom({ id: socket.id, name, room });
     socket.join(user.room);
+    if (user === null) return null;
     callback();
   });
 
-  /* SOCKET - CHECK ROOM CODE */
-  socket.on("check", (room, callback) => {
+  // SOCKET HANDLER - ERROR CHECKING ROOM CODE
+  socket.on("check", ({ room }, callback) => {
     const status = checkRoom(room);
     if (status) {
       callback(status);
+    } else {
+      callback();
     }
-    callback();
   });
 
-  /* SOCKET -  ROOM SETUP*/
+  // SOCKET HANDLER - SETUP ROOM ON HOST OR JOIN LOBBY
   socket.on("roomsetup", () => {
-    const r = findRoom(socket.roomname);
+    const r = findRoom(socket.roomname)[0];
+    if (r === undefined) return null;
+
     io.to(socket.roomname).emit("roomdata", {
       room: socket.roomname,
-      settings: r[0].settings,
-      host: r[0].host,
+      host: r.host,
       id: socket.id,
+      settings: r.settings,
     });
+
     io.to(socket.roomname).emit("players", { players: r[0].players });
   });
 
