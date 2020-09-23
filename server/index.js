@@ -338,7 +338,7 @@ io.on("connection", (socket) => {
     io.to(player.room).emit("newhost", { host: r.host });
 
     // New gamestate
-    if (r[0].active) {
+    if (r.active) {
       const gamestate = r;
       io.to(player.room).emit("newgamestate", { gamestate });
     }
