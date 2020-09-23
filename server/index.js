@@ -207,7 +207,7 @@ io.on("connection", (socket) => {
 
   // SOCKET HANDLER - ROUND FLOW AFTER LOCKING IN BETS
   socket.on("readyplayer", () => {
-    let gamestate = setReady(socket.romoname, socket.id);
+    let gamestate = setReady(socket.roomname, socket.id);
     if (gamestate === null) return null;
 
     io.to(socket.roomname).emit("newgamestate", { gamestate });
@@ -335,12 +335,12 @@ io.on("connection", (socket) => {
     // New host if last host has left
     const new_host = r.players[0].id;
     r.host = new_host;
-    io.to(user.room).emit("newhost", { host: r.host });
+    io.to(player.room).emit("newhost", { host: r.host });
 
     // New gamestate
     if (r[0].active) {
       const gamestate = r;
-      io.to(user.room).emit("newgamestate", { gamestate });
+      io.to(player.room).emit("newgamestate", { gamestate });
     }
   });
 });

@@ -354,7 +354,7 @@ const removePlayer = (id, room) => {
   const room_index = rooms.findIndex((rm) => rm.roomId === room);
   if (room_index === -1) return null;
 
-  const players = rooms[index].players;
+  const players = rooms[room_index].players;
   const player_index = players.findIndex((user) => user.id === id);
   if (player_index === -1) return null;
   const player = players.splice(player_index, 1)[0];
@@ -362,11 +362,11 @@ const removePlayer = (id, room) => {
   const chat_index = chatrooms.findIndex((cr) => cr.roomId === room);
 
   // Return the color back to the room
-  rooms[index].colors.unshift(player.color);
+  rooms[room_index].colors.unshift(player.color);
 
   // If there are no more players in the room, remove the room and chatroom from the database
-  if (rooms[index].players.length === 0) {
-    rooms.splice(index, 1);
+  if (rooms[room_index].players.length === 0) {
+    rooms.splice(room_index, 1);
     chatrooms.splice(chat_index, 1);
   }
 
