@@ -11,10 +11,12 @@ const io = require("socket.io")(http, {
 const {
   createRoom,
   joinRoom,
-  findRoom,
   checkRoom,
   changeRoomSettings,
-  setInitialBalance,
+  findRoom,
+  setInitialGamestate,
+  resetGamestate,
+  nextRound,
   addBet,
   removeBet,
   clearBets,
@@ -24,15 +26,14 @@ const {
   checkBankrupt,
   rollDice,
   setReady,
-  nextRound,
-  resetRoom,
+  allPlayersReady,
+  removePlayer,
   addMessage,
-  removeUser,
-  countdown,
   resetTime,
+  countdown,
 } = require("./room");
 
-// Socket handler
+// SOCKET HANDLER
 io.on("connection", (socket) => {
   console.log(socket.id + " has just connected");
 
@@ -67,9 +68,9 @@ io.on("connection", (socket) => {
     socket.roomname = room;
 
     // Add socket to specified room
-    const user = joinRoom({ id: socket.id, name, room });
-    socket.join(user.room);
+    const user = joinRoom(socket.id, name, room);
     if (user === null) return null;
+    socket.join(user.room);
     callback();
   });
 
@@ -91,82 +92,110 @@ io.on("connection", (socket) => {
     io.to(socket.roomname).emit("roomdata", {
       room: socket.roomname,
       host: r.host,
-      id: socket.id,
       settings: r.settings,
     });
 
-    io.to(socket.roomname).emit("players", { players: r[0].players });
+    io.to(socket.roomname).emit("players", { players: r.players });
   });
 
-  /* SOCKET - SETTINGS */
+  // SOCKET HANDLER - SETTINGS
   socket.on("timerchange", ({ timer }) => {
-    changeRoomSettings(socket.roomname, "time", timer);
-    io.to(socket.roomname).emit("timeropt", { timer });
+    const option = changeRoomSettings(socket.roomname, "time", timer);
+    if (option === null) return null;
+    io.to(socket.roomname).emit("timeropt", { timer: option });
   });
-  socket.on("roundchange", ({ round }) => {
-    changeRoomSettings(socket.roomname, "rounds", round);
-    io.to(socket.roomname).emit("roundopt", { round });
+  socket.on("roundschange", ({ rounds }) => {
+    const option = changeRoomSettings(socket.roomname, "rounds", rounds);
+    if (option === null) return null;
+    io.to(socket.roomname).emit("roundsopt", { rounds: option });
   });
   socket.on("balancechange", ({ balance }) => {
-    changeRoomSettings(socket.roomname, "balance", balance);
-    io.to(socket.roomname).emit("balanceopt", { balance });
+    const option = changeRoomSettings(socket.roomname, "balance", balance);
+    if (option === null) return null;
+    io.to(socket.roomname).emit("balanceopt", { balance: option });
   });
 
-  /* SOCKET - GAME START */
+  // SOCKET HANDLER - STARTING OR RESTARTING A GAME
   socket.on("startgame", ({ balance }) => {
-    const gamestate = setInitialBalance({ room: socket.roomname, balance });
+    const gamestate = setInitialGamestate(socket.roomname, balance);
+    if (gamestate === null) return null;
     io.to(socket.roomname).emit("gamestart", { gamestate });
   });
+  socket.on("playagain", () => {
+    const gamestate = resetGamestate(socket.roomname);
+    if (gamestate === null) return null;
+    io.to(socket.roomname).emit("gamerestart", { gamestate });
+  });
 
-  /* ADDED --------------------------------------------------------------------------- */
+  // SOCKET HANDLER - ROUND FLOW
   socket.on("roundstart", () => {
-    var current_time = resetTime(socket.roomname);
-    io.to(socket.roomname).emit("timer", current_time);
+    // Clear the dice and restart the time at the start of each round
+    let current_time = resetTime(socket.roomname);
+    if (current_time === null) return null;
+
+    io.to(socket.roomname).emit("timer", { current_time });
     io.to(socket.roomname).emit("cleardice");
-    console.log(Object.keys(io.sockets.sockets));
-    for (let i = 0; i < Object.keys(io.sockets.sockets).length; i++) {
-      console.log(Object.keys(io.sockets.sockets)[i]);
-      io.to(Object.keys(io.sockets.sockets)[i]).emit("showround");
-    }
-    // io.to(socket.roomname).emit("showround");
+    io.to(socket.roomname).emit("showround");
+
+    // Start the round
     setTimeout(() => {
       io.to(socket.roomname).emit("hideround");
 
-      var interval = setInterval(() => {
+      // Set interval for the timer to go off every second
+      let interval = setInterval(() => {
         current_time = countdown(socket.roomname);
         if (current_time === null) {
           clearInterval(interval);
         } else if (current_time >= 0) {
-          io.to(socket.roomname).emit("timer", current_time);
+          io.to(socket.roomname).emit("timer", { current_time });
         } else {
+          // continue post-betting game flow
           clearInterval(interval);
           io.to(socket.roomname).emit("showtimesup");
+
+          // Roll the dice
           setTimeout(() => {
             io.to(socket.roomname).emit("hidetimesup");
-            var state = rollDice({ room: socket.roomname });
-            if (state === null) return; // weird but need to come back and fix error here
+
+            let gamestate = rollDice(socket.roomname);
+            if (gamestate === null) return null;
+
             io.to(socket.roomname).emit("diceroll", {
-              die1: state.dice[0],
-              die2: state.dice[1],
-              die3: state.dice[2],
+              die1: gamestate.dice[0],
+              die2: gamestate.dice[1],
+              die3: gamestate.dice[2],
             });
+
+            // Calculate the wins and losses
             setTimeout(() => {
-              var results = calculateNets(socket.roomname);
-              io.to(socket.roomname).emit("showresults", results);
+              let results = calculateNets(socket.roomname);
+              io.to(socket.roomname).emit("showresults", { results });
+
+              // Calculate the total scores and update the gamestate
               setTimeout(() => {
                 io.to(socket.roomname).emit("hideresults");
+
                 results = calculateBets(socket.roomname);
-                clearBets(socket.roomname);
-                state = clearNets(socket.roomname);
+
+                gamestate = clearBets(socket.roomname);
+                if (gamestate === null) return null;
+                gamestate = clearNets(socket.roomname);
+                if (gamestate === null) return null;
+
+                // Send new gamestate to clients after calculations
                 io.to(socket.roomname).emit("newgamestate", {
-                  gamestate: state,
+                  gamestate,
                 });
 
-                var round = nextRound(socket.roomname);
-                if (round === -1 || checkBankrupt(socket.roomname)) {
-                  io.to(socket.roomname).emit("gameover", results);
+                // Start the next round or end the game
+                let round = nextRound(socket.roomname);
+                let bankrupt = checkBankrupt(socket.roomname);
+                if (bankrupt === null) return null;
+
+                if (round === -1 || bankrupt) {
+                  io.to(socket.roomname).emit("gameover", { results });
                 } else {
-                  io.to(socket.roomname).emit("nextround", round);
+                  io.to(socket.roomname).emit("nextround", { round });
                 }
               }, 5000);
             }, 5500);
@@ -176,47 +205,63 @@ io.on("connection", (socket) => {
     }, 3000);
   });
 
+  // SOCKET HANDLER - ROUND FLOW AFTER LOCKING IN BETS
   socket.on("readyplayer", () => {
-    const gamestate = setReady({
-      room: socket.roomname,
-      id: socket.id,
-    });
+    let gamestate = setReady(socket.romoname, socket.id);
+    if (gamestate === null) return null;
+
     io.to(socket.roomname).emit("newgamestate", { gamestate });
 
-    let all_ready = true;
-    for (let i = 0; i < gamestate.players.length; i++) {
-      if (gamestate.players[i].ready === false) {
-        all_ready = false;
-      }
-    }
+    // If all players are ready, the dice roll begins
+    const all_ready = allPlayersReady(socket.roomname);
+    if (gamestate === null) return null;
 
-    // if all players are ready, the dice roll begins
     if (all_ready) {
-      io.to(socket.roomname).emit("rolltime");
+      io.to(socket.roomname).emit("showallbetsin");
+
+      // Roll the dice
       setTimeout(() => {
         io.to(socket.roomname).emit("hiderolling");
-        var state = rollDice({ room: socket.roomname });
-        if (state === null) return; // weird but need to come back and fix error here
-        io.to(socket.roomname).emit("diceroll", {
-          die1: state.dice[0],
-          die2: state.dice[1],
-          die3: state.dice[2],
-        });
-        setTimeout(() => {
-          var results = calculateNets(socket.roomname);
-          io.to(socket.roomname).emit("showresults", results);
-          setTimeout(() => {
-            io.to(socket.roomname).emit("hideresults");
-            results = calculateBets(socket.roomname);
-            clearBets(socket.roomname);
-            state = clearNets(socket.roomname);
-            io.to(socket.roomname).emit("newgamestate", { gamestate: state });
 
-            var round = nextRound(socket.roomname);
-            if (round === -1 || checkBankrupt(socket.roomname)) {
-              io.to(socket.roomname).emit("gameover", results);
+        let gamestate = rollDice(socket.roomname);
+        if (gamestate === null) return null;
+
+        io.to(socket.roomname).emit("diceroll", {
+          die1: gamestate.dice[0],
+          die2: gamestate.dice[1],
+          die3: gamestate.dice[2],
+        });
+
+        // Calculate the wins and losses
+        setTimeout(() => {
+          let results = calculateNets(socket.roomname);
+          io.to(socket.roomname).emit("showresults", { results });
+
+          // Calculate the total scores and update the gamestate
+          setTimeout(() => {
+            io.to(socket.roomname).emit("hideallbetsin");
+
+            results = calculateBets(socket.roomname);
+
+            gamestate = clearBets(socket.roomname);
+            if (gamestate === null) return null;
+            gamestate = clearNets(socket.roomname);
+            if (gamestate === null) return null;
+
+            // Send new gamestate to clients after calculations
+            io.to(socket.roomname).emit("newgamestate", {
+              gamestate,
+            });
+
+            // Start the next round or end the game
+            let round = nextRound(socket.roomname);
+            let bankrupt = checkBankrupt(socket.roomname);
+            if (bankrupt === null) return null;
+
+            if (round === -1 || bankrupt) {
+              io.to(socket.roomname).emit("gameover", { results });
             } else {
-              io.to(socket.roomname).emit("nextround", round);
+              io.to(socket.roomname).emit("nextround", { round });
             }
           }, 5000);
         }, 5500);
@@ -224,71 +269,78 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("playagain", () => {
-    const gamestate = resetRoom(socket.roomname);
-    io.to(socket.roomname).emit("gamerestart", { gamestate });
-  });
-  /* ADDED --------------------------------------------------------------------------- */
-
-  /* SOCKET - BETTING */
+  // SOCKET HANDLER - BETTING
   socket.on("bet", ({ id, amount, animal }) => {
-    const gamestate = addBet({ room: socket.roomname, id, amount, animal });
+    const gamestate = addBet(socket.roomname, id, amount, animal);
+    if (gamestate === null) return null;
     io.to(socket.roomname).emit("newgamestate", { gamestate });
   });
   socket.on("unbet", ({ id, amount, animal }) => {
-    const gamestate = removeBet({ room: socket.roomname, id, amount, animal });
+    const gamestate = removeBet(socket.roomname, id, amount, animal);
+    if (gamestate === null) return null;
     io.to(socket.roomname).emit("newgamestate", { gamestate });
   });
 
-  /* SOCKET - CHAT */
+  // SOCKET HANDLER - CHAT
   socket.on("sendmessage", ({ id, name, message }) => {
-    const chatbox = addMessage({ id, room: socket.roomname, name, message });
+    const chatbox = addMessage(id, socket.roomname, name, message);
+    if (chatbox === null) return null;
     io.to(socket.roomname).emit("chatbox", { chatbox });
   });
 
-  /* SOCKET - Remove Player NOT disconnected */
+  // SOCKET HANDLER - REMOVE PLAYER FROM ROOM
   socket.on("removeplayer", () => {
-    const user = removeUser({ id: socket.id, room: socket.roomname });
+    // Remove the player from the room
+    const player = removePlayer(socket.id, socket.roomname);
+    if (player === null) return null;
 
-    if (user) {
-      const r = findRoom(user.room);
-      if (r.length !== 0) {
-        io.to(user.room).emit("players", {
-          players: r[0].players,
-        });
-        const newHost = r[0].players[0].id;
-        r[0].host = newHost;
-        io.to(user.room).emit("newhost", r[0].host);
+    // Update the room
+    const r = findRoom(player.room)[0];
+    if (r === undefined) return null;
 
-        if (r[0].active) {
-          const gamestate = r[0];
-          io.to(user.room).emit("newgamestate", { gamestate });
-        }
-      }
+    // New player list
+    io.to(player.room).emit("players", {
+      players: r.players,
+    });
+
+    // New host if last host has left
+    const new_host = r.players[0].id;
+    r.host = new_host;
+    io.to(user.room).emit("newhost", { host: r.host });
+
+    // New gamestate
+    if (r[0].active) {
+      const gamestate = r;
+      io.to(user.room).emit("newgamestate", { gamestate });
     }
   });
 
-  /* SOCKET - DISCONNECT */
+  // SOCKET HANDLER - DISCONNECT
   socket.on("disconnect", () => {
     console.log(socket.id + " had left");
 
-    const user = removeUser({ id: socket.id, room: socket.roomname });
+    // Remove the player from the room
+    const player = removePlayer(socket.id, socket.roomname);
+    if (player === null) return null;
 
-    if (user) {
-      const r = findRoom(user.room);
-      if (r.length !== 0) {
-        io.to(user.room).emit("players", {
-          players: r[0].players,
-        });
-        const newHost = r[0].players[0].id;
-        r[0].host = newHost;
-        io.to(user.room).emit("newhost", r[0].host);
+    // Update the room
+    const r = findRoom(player.room)[0];
+    if (r === undefined) return null;
 
-        if (r[0].active) {
-          const gamestate = r[0];
-          io.to(user.room).emit("newgamestate", { gamestate });
-        }
-      }
+    // New player list
+    io.to(player.room).emit("players", {
+      players: r.players,
+    });
+
+    // New host if last host has left
+    const new_host = r.players[0].id;
+    r.host = new_host;
+    io.to(user.room).emit("newhost", { host: r.host });
+
+    // New gamestate
+    if (r[0].active) {
+      const gamestate = r;
+      io.to(user.room).emit("newgamestate", { gamestate });
     }
   });
 });
