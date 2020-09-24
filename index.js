@@ -1,6 +1,8 @@
-const app = require("express")();
+const express = require("express");
+const app = express();
 const http = require("http").createServer(app);
-const port = 9000;
+const path = require("path");
+const port = process.env.PORT || 9000;
 
 const io = require("socket.io")(http, {
   pingInterval: 25000,
@@ -32,6 +34,22 @@ const {
   resetTime,
   countdown,
 } = require("./room");
+
+// Static file declaration
+app.use(express.static(path.join(__dirname, "baucua-client/build")));
+
+// Production mode
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "baucua-client/build")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join((__dirname = "baucua-client/build/index.html")));
+  });
+}
+
+// Build/Development mode
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname + "/baucua-client/public/index.html"));
+});
 
 // SOCKET HANDLER
 io.on("connection", (socket) => {
