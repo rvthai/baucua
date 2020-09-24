@@ -163,6 +163,7 @@ const addBet = (room, id, amount, animal) => {
       amount: amount,
       color: player.color,
     };
+
     gameroom.bets.push(bet);
   }
 

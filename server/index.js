@@ -221,7 +221,7 @@ io.on("connection", (socket) => {
 
       // Roll the dice
       setTimeout(() => {
-        io.to(socket.roomname).emit("hiderolling");
+        io.to(socket.roomname).emit("hideallbetsin");
 
         let gamestate = rollDice(socket.roomname);
         if (gamestate === null) return null;
@@ -239,7 +239,7 @@ io.on("connection", (socket) => {
 
           // Calculate the total scores and update the gamestate
           setTimeout(() => {
-            io.to(socket.roomname).emit("hideallbetsin");
+            io.to(socket.roomname).emit("hideresults");
 
             results = calculateBets(socket.roomname);
 
@@ -306,12 +306,12 @@ io.on("connection", (socket) => {
     // New host if last host has left
     const new_host = r.players[0].id;
     r.host = new_host;
-    io.to(user.room).emit("newhost", { host: r.host });
+    io.to(player.room).emit("newhost", { host: r.host });
 
     // New gamestate
-    if (r[0].active) {
+    if (r.active) {
       const gamestate = r;
-      io.to(user.room).emit("newgamestate", { gamestate });
+      io.to(player.room).emit("newgamestate", { gamestate });
     }
   });
 
