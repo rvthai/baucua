@@ -36,20 +36,20 @@ const {
 } = require("./room");
 
 // Static file declaration
-// app.use(express.static(path.join(__dirname, "baucua-client/build")));
+app.use(express.static(path.join(__dirname, "baucua-client/build")));
 
 // Production mode
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "baucua-client/build")));
-  // app.get("*", (req, res) => {
-  //   res.sendFile(path.join((__dirname = "baucua-client/build/index.html")));
-  // });
+  app.get("*", (req, res) => {
+    res.sendFile(path.join((__dirname = "baucua-client/build/index.html")));
+  });
 }
 
 // Build/Development mode
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(__dirname + "/baucua-client/public/index.html"));
-// });
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "baucua-client/public/index.html"));
+});
 
 // SOCKET HANDLER
 io.on("connection", (socket) => {
@@ -365,5 +365,5 @@ io.on("connection", (socket) => {
 
 // Server listener
 http.listen(port, () => {
-  console.log("listening on *:9000");
+  console.log(`Server listening on port ${port}`);
 });
