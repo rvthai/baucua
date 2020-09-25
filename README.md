@@ -17,5 +17,5 @@ This project was bootstrapped with React + Express + Socket.IO and was deployed 
 2. Run `git submodule init` and `git submodule update` subsequently.
 3. From the root directory, run `npm run dev`.
 
-The server will be listening on port 9000 by default.
-\nOpen http://localhost:9000 to view it in the browser.
+The server will be listening on port 9000 by default.\
+Open http://localhost:9000 to view it in the browser.
