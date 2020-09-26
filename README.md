@@ -15,7 +15,10 @@ This project was bootstrapped with React + Express + Socket.IO and was deployed 
 
 1. Clone the project.
 2. Run `git submodule init` and `git submodule update` subsequently.
-3. From the root directory, run `npm run dev`.
+3. Run `npm install` and `npm run install-client` from the root directory.
+4. Run `npm run dev` from the root directory.
 
 The server will be listening on port 9000 by default.\
-Open http://localhost:9000 to view it in the browser.
+The client will be running on port 3000 by default.\
+
+Open http://localhost:3000 to view it in the browser.
