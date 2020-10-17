@@ -19,6 +19,6 @@ This project was bootstrapped with React + Express + Socket.IO and was deployed 
 4. Run `npm run dev` from the root directory.
 
 The server will be listening on port 9000 by default.\
-The client will be running on port 3000 by default.\
+The client will be running on port 3000 by default.
 
 Open http://localhost:3000 to view it in the browser.
