@@ -4,7 +4,7 @@ This project is a virtual rendition of the traditional Vietnamese New Year Dice 
 
 ## Project Details
 
-This project was bootstrapped with React + Express + Socket.IO and was deployed with Heroku.
+This project is bootstrapped with React + Express + Socket.IO and is deployed with render.
 
 ### Preview
 
